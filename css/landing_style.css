@@ -611,3 +611,154 @@ html, body, [class*="css"] {
     font-size: 0.92rem;
     color: #f472b6;
 }
+
+/* -----------------------------------------------------------------------------
+   RESPONSIVE MEDIA QUERIES (LARGE SCREENS, TABLETS & MOBILE PHONES)
+----------------------------------------------------------------------------- */
+
+/* 1. Large Monitors & Ultra-wide Screens (>= 1440px) */
+@media (min-width: 1440px) {
+    .block-container {
+        max-width: 1360px !important;
+    }
+    .hero-title-gradient {
+        font-size: 3.4rem !important;
+    }
+    .features-grid-3col {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 28px !important;
+    }
+    .steps-grid-4col, .tech-grid-4col {
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 24px !important;
+    }
+}
+
+/* 2. Standard Laptops & Desktop Displays (1024px - 1439px) */
+@media (min-width: 1024px) and (max-width: 1439px) {
+    .block-container {
+        max-width: 1160px !important;
+    }
+    .hero-title-gradient {
+        font-size: 2.7rem !important;
+    }
+    .features-grid-3col {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+    .steps-grid-4col, .tech-grid-4col {
+        grid-template-columns: repeat(4, 1fr) !important;
+    }
+}
+
+/* 3. Tablets & Small Laptops (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .block-container {
+        max-width: 95% !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+    .landing-navbar-container, .dashboard-navbar-container {
+        padding: 12px 20px !important;
+    }
+    .hero-title-gradient {
+        font-size: 2.3rem !important;
+    }
+    .hero-desc-lead {
+        font-size: 1.05rem !important;
+    }
+    .features-grid-3col {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 18px !important;
+    }
+    .steps-grid-4col, .tech-grid-4col {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 16px !important;
+    }
+    .about-glass-card, .proactive-card {
+        padding: 24px 20px !important;
+    }
+}
+
+/* 4. Mobile Devices & Small Screens (< 768px) */
+@media (max-width: 767px) {
+    html, body {
+        overflow-x: hidden !important;
+    }
+    .block-container {
+        max-width: 100% !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        padding-top: 0.8rem !important;
+    }
+    .landing-navbar-container, .dashboard-navbar-container {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        padding: 14px !important;
+        border-radius: 12px !important;
+    }
+    .nav-brand {
+        justify-content: center !important;
+        font-size: 1.15rem !important;
+    }
+    .nav-links-row {
+        width: 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        justify-content: center !important;
+    }
+    .nav-btn, .stButton > button {
+        font-size: 0.82rem !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        padding: 0 12px !important;
+        flex: 1 1 auto !important;
+    }
+    .advanced-hero-card {
+        padding: 28px 16px 24px 16px !important;
+        border-radius: 16px !important;
+        margin-bottom: 28px !important;
+    }
+    .hero-title-gradient {
+        font-size: 1.85rem !important;
+        letter-spacing: -0.5px !important;
+    }
+    .hero-subtitle-bold {
+        font-size: 1.1rem !important;
+    }
+    .hero-desc-lead {
+        font-size: 0.98rem !important;
+        line-height: 1.55 !important;
+    }
+    .section-title {
+        font-size: 1.5rem !important;
+    }
+    .section-desc {
+        font-size: 0.95rem !important;
+    }
+    .features-grid-3col, .steps-grid-4col, .tech-grid-4col {
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+    }
+    .about-glass-card, .proactive-card {
+        padding: 20px 16px !important;
+        border-radius: 16px !important;
+    }
+    .about-paragraph, .proactive-text {
+        font-size: 0.98rem !important;
+        line-height: 1.6 !important;
+    }
+    .factor-pill {
+        font-size: 0.8rem !important;
+        padding: 4px 12px !important;
+    }
+    /* Auto-stack Streamlit columns on mobile */
+    div[data-testid="column"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+        margin-bottom: 10px !important;
+    }
+}
+
