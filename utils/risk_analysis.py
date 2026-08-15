@@ -137,18 +137,22 @@ def render_risk_analysis_page():
 
             with st.spinner("Analyzing project parameters using CatBoost model..."):
                 res = predict_project_risk(input_dict)
-                risk_level = res["risk_category"]
-                risk_score = res["risk_score"]
 
-                # Save prediction result to database in real-time
-                save_ok, save_msg = save_project_prediction(
-                    user_id=user_id,
-                    email=email,
-                    project_name=project_name,
-                    risk_level=risk_level,
-                    risk_score=risk_score,
-                    input_features=input_dict
-                )
+                if "error" in res:
+                    st.error(f"❌ Prediction Error: {res['error']}")
+                else:
+                    risk_level = res["risk_category"]
+                    risk_score = res["risk_score"]
+
+                    # Save prediction result to database in real-time
+                    save_ok, save_msg = save_project_prediction(
+                        user_id=user_id,
+                        email=email,
+                        project_name=project_name,
+                        risk_level=risk_level,
+                        risk_score=risk_score,
+                        input_features=input_dict
+                    )
 
                 if save_ok:
                     st.balloons()

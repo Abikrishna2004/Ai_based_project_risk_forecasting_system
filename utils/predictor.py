@@ -9,6 +9,8 @@ import json
 import joblib
 import pandas as pd
 import numpy as np
+import streamlit as st
+from pathlib import Path
 from models.model_loader import ModelLoader
 
 # Fallback 20-feature taxonomy
@@ -61,18 +63,48 @@ DEFAULT_NUMERICAL = [
     "defect_count"
 ]
 
+_startup_validated = False
 
-def load_model_and_metadata():
+
+@st.cache_resource
+def get_cached_model_and_metadata():
     """
-    Loads and returns:
-      1. CatBoost model instance via ModelLoader (Priority 1: models/catboost_risk_model.joblib, Priority 2: models/catboost_risk_model.cbm)
-      2. Preprocessing metadata (preprocessing_objects/preprocessing_metadata.json)
-      3. Outlier capper bounds (preprocessing_objects/outlier_capper.joblib)
-      4. Categorical encoders (preprocessing_objects/categorical_encoders.joblib)
+    Loads and caches the trained 20-feature CatBoost model and preprocessing objects.
+    Uses Streamlit resource caching to avoid reloading from disk on user interactions.
     """
     model = ModelLoader.load_model()
     metadata, capper, encoders = ModelLoader.load_preprocessing_objects()
     return model, metadata, capper, encoders
+
+
+def validate_model_integration():
+    """
+    Performs a one-time validation to verify that:
+      - Model artifact exists.
+      - Preprocessing metadata exists and contains 20 features.
+      - Categorical encoders exist.
+      - Outlier capper bounds exist.
+    """
+    global _startup_validated
+    if _startup_validated:
+        return True
+
+    try:
+        model, metadata, capper, encoders = get_cached_model_and_metadata()
+
+        if model is None:
+            raise FileNotFoundError("CatBoost model instance is None.")
+
+        feature_cols = metadata.get("feature_columns", [])
+        if len(feature_cols) != 20:
+            raise ValueError(f"Expected 20 feature_columns in metadata, found {len(feature_cols)}.")
+
+        _startup_validated = True
+        print("[SUCCESS] Startup validation completed: 20-feature CatBoost model integration verified.")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Startup validation failed: {e}")
+        return False
 
 
 def predict_project_risk(input_dict):
@@ -88,7 +120,7 @@ def predict_project_risk(input_dict):
       - probabilities: dict of class percentages
     """
     try:
-        model, metadata, capper, encoders = load_model_and_metadata()
+        model, metadata, capper, encoders = get_cached_model_and_metadata()
     except Exception as e:
         print(f"Error loading model/metadata: {e}")
         return {
@@ -105,10 +137,7 @@ def predict_project_risk(input_dict):
     cat_cols = metadata.get("categorical_columns", DEFAULT_CATEGORICAL)
     num_cols = metadata.get("numerical_columns", DEFAULT_NUMERICAL)
 
-    print(f"\n[DEBUG] Predictor Engine Initialized:")
-    print(f" - Loaded Feature Count: {len(feature_columns)}")
-
-    # 1. Strict Feature Validation
+    # 1. Strict Feature Validation (Missing Features Check)
     missing_features = [col for col in feature_columns if col not in input_dict]
     if missing_features:
         err_msg = f"Missing required ML features for prediction: {missing_features}"
@@ -121,7 +150,7 @@ def predict_project_risk(input_dict):
     # 2. Extract and Process 20 Features (Ignore extra fields like project_name or old features)
     processed_row = {}
 
-    # 2a. Categorical Encoding with Unseen Value Handling
+    # 2a. Categorical Encoding with Unseen Value Validation
     cat_mappings = encoders if encoders else metadata.get("categorical_mappings", {})
     for col in cat_cols:
         val = str(input_dict.get(col, ""))
@@ -129,12 +158,12 @@ def predict_project_risk(input_dict):
 
         if val in mapping:
             processed_row[col] = mapping[val]
-        elif mapping:
-            fallback_val = list(mapping.values())[0]
-            print(f"[WARNING] Unseen categorical value '{val}' for feature '{col}'. Using fallback encoding '{fallback_val}'.")
-            processed_row[col] = fallback_val
         else:
-            processed_row[col] = 0
+            err_unseen = f"Unsupported value '{val}' for feature '{col}'. Please select a value supported by the trained model."
+            print(f"[ERROR] {err_unseen}")
+            return {
+                "error": err_unseen
+            }
 
     # 2b. Numerical Outlier Capping (No StandardScaler/MinMaxScaler)
     bounds = capper if capper else metadata.get("capper_bounds", {})
@@ -152,9 +181,6 @@ def predict_project_risk(input_dict):
 
     # 3. Build DataFrame with exact feature order
     df_input = pd.DataFrame([processed_row])[feature_columns]
-
-    print(f"[DEBUG] Input DataFrame Shape: {df_input.shape}")
-    print(f"[DEBUG] Input Column Order: {list(df_input.columns)}")
 
     # 4. Strict Shape & Order Validation
     if df_input.shape != (1, 20):
@@ -199,6 +225,7 @@ def predict_project_risk(input_dict):
             for i, p in enumerate(probs)
         }
 
+        print(f"[DEBUG] Input DataFrame Shape: {df_input.shape}")
         print(f"[DEBUG] Prediction Probabilities: {class_probs}")
         print(f"[DEBUG] Final Predicted Category: {risk_category} (Confidence: {confidence_pct}%)")
 
