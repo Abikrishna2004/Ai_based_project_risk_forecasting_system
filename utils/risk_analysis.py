@@ -1,6 +1,6 @@
 """
 Risk Analysis Module for AI-Based Project Risk Forecasting System
-Implements exact form fields, CatBoost model inference, MongoDB Atlas storage, and result card layout.
+Implements exact form fields, 20-feature CatBoost model inference, database storage, and result card layout.
 """
 
 import streamlit as st
@@ -110,39 +110,29 @@ def render_risk_analysis_page():
         if not project_name.strip():
             st.error("Please enter a valid Project Name before running the analysis.")
         else:
-            # Construct feature payload
+            # Construct feature payload containing ONLY project_name + exact 20 ML features
             input_dict = {
                 "project_name": project_name.strip(),
                 "project_type": project_type,
                 "industry_sector": industry_sector,
                 "methodology": methodology,
                 "region": region,
-                "contract_type": "Fixed Price",
                 "priority": priority,
-                "project_status": "Completed",
                 "planned_duration_days": planned_duration_days,
-                "actual_duration_days": planned_duration_days,
                 "budget_usd": budget_usd,
-                "actual_cost_usd": budget_usd,
-                "cost_overrun_pct": 0.0,
-                "schedule_overrun_pct": 0.0,
+                "requirement_changes_count": requirement_changes_count,
+                "vendor_dependency_count": vendor_dependency_count,
+                "milestones_missed": milestones_missed,
                 "team_size": team_size,
                 "team_avg_experience_years": team_avg_experience_years,
                 "team_turnover_pct": team_turnover_pct,
-                "stakeholder_count": 8,
-                "requirement_changes_count": requirement_changes_count,
                 "resource_availability_pct": resource_availability_pct,
-                "vendor_dependency_count": vendor_dependency_count,
                 "communication_score": communication_score,
                 "sponsor_engagement_score": sponsor_engagement_score,
-                "previous_project_success_rate_pct": 85.0,
                 "tech_complexity_score": tech_complexity_score,
-                "regulatory_compliance_load": 40.0,
                 "scope_clarity_score": scope_clarity_score,
                 "external_dependency_score": external_dependency_score,
-                "safety_incidents": 0,
-                "defect_count": defect_count,
-                "milestones_missed": milestones_missed
+                "defect_count": defect_count
             }
 
             with st.spinner("Analyzing project parameters using CatBoost model..."):
@@ -150,7 +140,7 @@ def render_risk_analysis_page():
                 risk_level = res["risk_category"]
                 risk_score = res["risk_score"]
 
-                # Save prediction result to MongoDB Atlas in real-time
+                # Save prediction result to database in real-time
                 save_ok, save_msg = save_project_prediction(
                     user_id=user_id,
                     email=email,
