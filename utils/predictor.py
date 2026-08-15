@@ -1,7 +1,7 @@
 """
 CatBoost Model Inference Engine for Project Risk Prediction
 Validates 20 frontend features, applies categorical mappings and numerical outlier capping,
-and returns real-time CatBoost risk forecasts and class probabilities.
+and returns real-time CatBoost risk forecasts, confidence scores, and class probabilities.
 """
 
 import os
@@ -11,11 +11,61 @@ import pandas as pd
 import numpy as np
 from models.model_loader import ModelLoader
 
+# Fallback 20-feature taxonomy
+DEFAULT_FEATURES = [
+    "project_type",
+    "industry_sector",
+    "methodology",
+    "region",
+    "priority",
+    "planned_duration_days",
+    "budget_usd",
+    "requirement_changes_count",
+    "vendor_dependency_count",
+    "milestones_missed",
+    "team_size",
+    "team_avg_experience_years",
+    "team_turnover_pct",
+    "resource_availability_pct",
+    "communication_score",
+    "sponsor_engagement_score",
+    "tech_complexity_score",
+    "scope_clarity_score",
+    "external_dependency_score",
+    "defect_count"
+]
+
+DEFAULT_CATEGORICAL = [
+    "project_type",
+    "industry_sector",
+    "methodology",
+    "region",
+    "priority"
+]
+
+DEFAULT_NUMERICAL = [
+    "planned_duration_days",
+    "budget_usd",
+    "requirement_changes_count",
+    "vendor_dependency_count",
+    "milestones_missed",
+    "team_size",
+    "team_avg_experience_years",
+    "team_turnover_pct",
+    "resource_availability_pct",
+    "communication_score",
+    "sponsor_engagement_score",
+    "tech_complexity_score",
+    "scope_clarity_score",
+    "external_dependency_score",
+    "defect_count"
+]
+
 
 def load_model_and_metadata():
     """
     Loads and returns:
-      1. CatBoost model (Priority 1: models/catboost_risk_model.joblib, Priority 2: models/catboost_risk_model.cbm)
+      1. CatBoost model instance via ModelLoader (Priority 1: models/catboost_risk_model.joblib, Priority 2: models/catboost_risk_model.cbm)
       2. Preprocessing metadata (preprocessing_objects/preprocessing_metadata.json)
       3. Outlier capper bounds (preprocessing_objects/outlier_capper.joblib)
       4. Categorical encoders (preprocessing_objects/categorical_encoders.joblib)
@@ -33,68 +83,60 @@ def predict_project_risk(input_dict):
     Returns dict:
       - risk_category: str ("Low", "Medium", "High", "Critical")
       - risk_score: float (highest class confidence percentage, e.g. 85.5%)
+      - weighted_risk_score: float (weighted risk score percentage)
       - class_probabilities: dict of class percentages
-      - probabilities: dict of class percentages (backward compatibility)
+      - probabilities: dict of class percentages
     """
-    model, metadata, capper, encoders = load_model_and_metadata()
+    try:
+        model, metadata, capper, encoders = load_model_and_metadata()
+    except Exception as e:
+        print(f"Error loading model/metadata: {e}")
+        return {
+            "error": f"Failed to load model artifacts: {str(e)}"
+        }
 
     if model is None or metadata is None:
         return {
-            "risk_category": "Medium",
-            "risk_score": 50.0,
-            "error": "Model or preprocessing metadata not found."
+            "error": "Model or preprocessing metadata could not be initialized."
         }
 
-    # Extract 20 ML feature taxonomy
-    feature_columns = metadata.get("feature_columns", [
-        "project_type", "industry_sector", "methodology", "region", "priority",
-        "planned_duration_days", "budget_usd", "requirement_changes_count",
-        "vendor_dependency_count", "milestones_missed", "team_size",
-        "team_avg_experience_years", "team_turnover_pct", "resource_availability_pct",
-        "communication_score", "sponsor_engagement_score", "tech_complexity_score",
-        "scope_clarity_score", "external_dependency_score", "defect_count"
-    ])
+    # Extract Feature Taxonomy
+    feature_columns = metadata.get("feature_columns", DEFAULT_FEATURES)
+    cat_cols = metadata.get("categorical_columns", DEFAULT_CATEGORICAL)
+    num_cols = metadata.get("numerical_columns", DEFAULT_NUMERICAL)
 
-    cat_cols = metadata.get("categorical_columns", [
-        "project_type", "industry_sector", "methodology", "region", "priority"
-    ])
+    print(f"\n[DEBUG] Predictor Engine Initialized:")
+    print(f" - Loaded Feature Count: {len(feature_columns)}")
 
-    num_cols = metadata.get("numerical_columns", [
-        "planned_duration_days", "budget_usd", "requirement_changes_count",
-        "vendor_dependency_count", "milestones_missed", "team_size",
-        "team_avg_experience_years", "team_turnover_pct", "resource_availability_pct",
-        "communication_score", "sponsor_engagement_score", "tech_complexity_score",
-        "scope_clarity_score", "external_dependency_score", "defect_count"
-    ])
-
-    # 1. Feature Presence Validation
+    # 1. Strict Feature Validation
     missing_features = [col for col in feature_columns if col not in input_dict]
     if missing_features:
         err_msg = f"Missing required ML features for prediction: {missing_features}"
-        print(f"Validation Error: {err_msg}")
+        print(f"[ERROR] {err_msg}")
         return {
-            "risk_category": "Medium",
-            "risk_score": 50.0,
-            "error": err_msg
+            "error": err_msg,
+            "missing_features": missing_features
         }
 
-    # 2. Extract and Preprocess 20 Features
+    # 2. Extract and Process 20 Features (Ignore extra fields like project_name or old features)
     processed_row = {}
 
-    # 2a. Categorical Encoding (Use saved joblib encoders if present, else metadata mappings)
+    # 2a. Categorical Encoding with Unseen Value Handling
     cat_mappings = encoders if encoders else metadata.get("categorical_mappings", {})
     for col in cat_cols:
         val = str(input_dict.get(col, ""))
         mapping = cat_mappings.get(col, {})
+
         if val in mapping:
             processed_row[col] = mapping[val]
         elif mapping:
-            # Fallback to first encoded index if value not seen
-            processed_row[col] = list(mapping.values())[0]
+            fallback_val = list(mapping.values())[0]
+            print(f"[WARNING] Unseen categorical value '{val}' for feature '{col}'. Using fallback encoding '{fallback_val}'.")
+            processed_row[col] = fallback_val
         else:
             processed_row[col] = 0
 
-    # 2b. Numerical Outlier Capping (Use saved joblib capper bounds if present, else metadata bounds)
+    # 2b. Numerical Outlier Capping (No StandardScaler/MinMaxScaler)
     bounds = capper if capper else metadata.get("capper_bounds", {})
     for col in num_cols:
         try:
@@ -108,20 +150,28 @@ def predict_project_risk(input_dict):
             val = float(np.clip(val, lb, ub))
         processed_row[col] = val
 
-    # 3. Build DataFrame with exact 20 training feature order
+    # 3. Build DataFrame with exact feature order
     df_input = pd.DataFrame([processed_row])[feature_columns]
 
-    # Validate shape (1, 20)
+    print(f"[DEBUG] Input DataFrame Shape: {df_input.shape}")
+    print(f"[DEBUG] Input Column Order: {list(df_input.columns)}")
+
+    # 4. Strict Shape & Order Validation
     if df_input.shape != (1, 20):
-        err_shape = f"Invalid feature matrix shape {df_input.shape}, expected (1, 20)"
-        print(f"Validation Error: {err_shape}")
+        err_shape = f"Invalid feature matrix shape {df_input.shape}, expected exactly (1, 20)"
+        print(f"[ERROR] {err_shape}")
         return {
-            "risk_category": "Medium",
-            "risk_score": 50.0,
             "error": err_shape
         }
 
-    # 4. CatBoost Inference via predict_proba()
+    if list(df_input.columns) != feature_columns:
+        err_order = "DataFrame column order does not match feature_columns taxonomy."
+        print(f"[ERROR] {err_order}")
+        return {
+            "error": err_order
+        }
+
+    # 5. CatBoost Inference via predict_proba()
     try:
         probs = model.predict_proba(df_input)[0]
 
@@ -131,24 +181,26 @@ def predict_project_risk(input_dict):
             {"0": "Low", "1": "Medium", "2": "High", "3": "Critical"}
         )
 
-        # Identify highest probability class
+        # Highest probability class
         top_class_idx = int(np.argmax(probs))
         raw_pred_str = str(top_class_idx)
         risk_category = inv_target_map.get(raw_pred_str, "Medium")
 
-        # Highest class confidence percentage
+        # Highest predicted class confidence percentage
         confidence_pct = round(float(probs[top_class_idx]) * 100.0, 1)
 
-        # Weighted risk score percentage across classes (Low=15%, Medium=45%, High=75%, Critical=95%)
-        weights = [0.15, 0.45, 0.75, 0.95]
-        weighted_score = sum(p * w for p, w in zip(probs, weights)) * 100.0
-        weighted_score = round(float(weighted_score), 1)
+        # Weighted risk score percentage (Low=15, Medium=45, High=75, Critical=95)
+        class_weights = [15.0, 45.0, 75.0, 95.0]
+        weighted_score = round(sum(p * w for p, w in zip(probs, class_weights)), 1)
 
-        # Class probabilities map
+        # Class probabilities dictionary
         class_probs = {
             inv_target_map.get(str(i), f"Class {i}"): round(float(p) * 100.0, 1)
             for i, p in enumerate(probs)
         }
+
+        print(f"[DEBUG] Prediction Probabilities: {class_probs}")
+        print(f"[DEBUG] Final Predicted Category: {risk_category} (Confidence: {confidence_pct}%)")
 
         return {
             "risk_category": risk_category,
@@ -159,9 +211,7 @@ def predict_project_risk(input_dict):
         }
 
     except Exception as e:
-        print("Inference Exception:", e)
+        print(f"[ERROR] Inference Exception: {e}")
         return {
-            "risk_category": "Medium",
-            "risk_score": 50.0,
-            "error": str(e)
+            "error": f"Model inference execution failed: {str(e)}"
         }
