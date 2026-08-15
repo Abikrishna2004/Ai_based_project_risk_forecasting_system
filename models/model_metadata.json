@@ -12,82 +12,82 @@
         "High": 2,
         "Critical": 3
     },
-    "best_iteration": 999,
+    "best_iteration": 741,
     "test_metrics": {
-        "accuracy": 0.9316215810790539,
-        "macro_precision": 0.9337738835038573,
-        "macro_recall": 0.9159500067396873,
-        "macro_f1": 0.924444057137298,
-        "weighted_f1": 0.9313952206183662,
-        "multi_class_log_loss": 0.17774137533734963,
-        "roc_auc_ovr_macro": 0.9943299658110591
+        "accuracy": 0.7664133206660333,
+        "macro_precision": 0.7721922324316455,
+        "macro_recall": 0.7386689159281286,
+        "macro_f1": 0.7535672879312684,
+        "weighted_f1": 0.765842996619381,
+        "multi_class_log_loss": 0.519576357406395,
+        "roc_auc_ovr_macro": 0.9379652977504581
     },
     "per_class_metrics": {
         "Low": {
-            "precision": 0.93669085218381,
-            "recall": 0.9152071170419794,
-            "f1_score": 0.9258243689798215,
+            "precision": 0.8248765154916928,
+            "recall": 0.7660550458715596,
+            "f1_score": 0.7943783783783783,
             "support": 7194
         },
         "Medium": {
-            "precision": 0.9288552405498282,
-            "recall": 0.9610555555555556,
-            "f1_score": 0.9446810834425513,
+            "precision": 0.7816945937401202,
+            "recall": 0.8241666666666667,
+            "f1_score": 0.8023689761479799,
             "support": 18000
         },
         "High": {
-            "precision": 0.9306884697575025,
-            "recall": 0.9147109852981463,
-            "f1_score": 0.9226305609284333,
+            "precision": 0.7008992805755395,
+            "recall": 0.7117158250388093,
+            "f1_score": 0.7062661410901182,
             "support": 10951
         },
         "Critical": {
-            "precision": 0.9388609715242882,
-            "recall": 0.8728263690630678,
-            "f1_score": 0.904640215198386,
+            "precision": 0.7812985399192296,
+            "recall": 0.6527381261354789,
+            "f1_score": 0.7112556561085973,
             "support": 3853
         }
     },
     "top_10_features": [
         {
             "feature": "priority",
-            "importance": 19.73954978727635
+            "importance": 24.73241141234086
         },
         {
-            "feature": "project_status",
-            "importance": 8.541026421327235
+            "feature": "milestones_missed",
+            "importance": 10.861556627642326
+        },
+        {
+            "feature": "defect_count",
+            "importance": 10.22059864978054
         },
         {
             "feature": "tech_complexity_score",
-            "importance": 7.158920923427224
-        },
-        {
-            "feature": "cost_overrun_pct",
-            "importance": 6.921132619192205
-        },
-        {
-            "feature": "regulatory_compliance_load",
-            "importance": 6.707928616718113
-        },
-        {
-            "feature": "schedule_overrun_pct",
-            "importance": 6.340821939091635
-        },
-        {
-            "feature": "previous_project_success_rate_pct",
-            "importance": 6.197292398763917
+            "importance": 9.284399813672325
         },
         {
             "feature": "external_dependency_score",
-            "importance": 6.016907963621783
+            "importance": 7.591857358493019
         },
         {
             "feature": "scope_clarity_score",
-            "importance": 5.457273639055411
+            "importance": 6.999328416664825
         },
         {
             "feature": "resource_availability_pct",
-            "importance": 5.05356131663198
+            "importance": 6.345185728259455
+        },
+        {
+            "feature": "communication_score",
+            "importance": 5.466113794472117
+        },
+        {
+            "feature": "sponsor_engagement_score",
+            "importance": 5.146176202867726
+        },
+        {
+            "feature": "team_avg_experience_years",
+            "importance": 4.188125917718108
         }
     ]
 }

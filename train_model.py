@@ -39,7 +39,7 @@ metadata_path = os.path.join(DEPLOYMENT_DIR, "preprocessing_metadata.json")
 if os.path.exists(metadata_path):
     with open(metadata_path, 'r') as f:
         prep_metadata = json.load(f)
-    categorical_cols = prep_metadata.get('categorical_features', [])
+    categorical_cols = prep_metadata.get('categorical_columns', [])
     cat_feature_indices = prep_metadata.get('cat_feature_indices', [])
     target_mapping = prep_metadata.get('target_mapping', {'Low': 0, 'Medium': 1, 'High': 2, 'Critical': 3})
 else:
@@ -201,6 +201,12 @@ try:
     joblib_model_path = os.path.join(MODEL_DIR, "catboost_risk_model.joblib")
     joblib.dump(model, joblib_model_path)
     print(f"Saved CatBoost model (joblib): '{joblib_model_path}'")
+
+    opt_dir = os.path.join(DATA_DIR, "Optimized_Model")
+    os.makedirs(opt_dir, exist_ok=True)
+    opt_model_path = os.path.join(opt_dir, "optimized_catboost_model.pkl")
+    joblib.dump(model, opt_model_path)
+    print(f"Saved CatBoost model for inference: '{opt_model_path}'")
 except Exception as e:
     print(f"Note: Joblib model export notice: {e}")
 

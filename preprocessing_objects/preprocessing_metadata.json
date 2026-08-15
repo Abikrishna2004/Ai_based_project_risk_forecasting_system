@@ -12,61 +12,79 @@
         "2": "High",
         "3": "Critical"
     },
+    "feature_columns": [
+        "project_type",
+        "industry_sector",
+        "methodology",
+        "region",
+        "priority",
+        "planned_duration_days",
+        "budget_usd",
+        "requirement_changes_count",
+        "vendor_dependency_count",
+        "milestones_missed",
+        "team_size",
+        "team_avg_experience_years",
+        "team_turnover_pct",
+        "resource_availability_pct",
+        "communication_score",
+        "sponsor_engagement_score",
+        "tech_complexity_score",
+        "scope_clarity_score",
+        "external_dependency_score",
+        "defect_count"
+    ],
     "categorical_columns": [
         "project_type",
         "industry_sector",
         "methodology",
         "region",
-        "contract_type",
-        "priority",
-        "project_status"
+        "priority"
     ],
     "numerical_columns": [
         "planned_duration_days",
-        "actual_duration_days",
+        "budget_usd",
+        "requirement_changes_count",
+        "vendor_dependency_count",
+        "milestones_missed",
         "team_size",
         "team_avg_experience_years",
         "team_turnover_pct",
-        "stakeholder_count",
-        "requirement_changes_count",
-        "budget_usd",
-        "actual_cost_usd",
-        "cost_overrun_pct",
-        "schedule_overrun_pct",
         "resource_availability_pct",
-        "vendor_dependency_count",
         "communication_score",
         "sponsor_engagement_score",
-        "previous_project_success_rate_pct",
         "tech_complexity_score",
-        "regulatory_compliance_load",
         "scope_clarity_score",
         "external_dependency_score",
-        "safety_incidents",
-        "defect_count",
-        "milestones_missed"
+        "defect_count"
     ],
     "cat_feature_indices": [
         0,
         1,
         2,
         3,
-        4,
-        5,
-        29
-    ],
-    "dropped_columns": [
-        "project_id",
-        "risk_score"
+        4
     ],
     "capper_bounds": {
         "planned_duration_days": {
             "lower_bound": 44.0,
             "upper_bound": 326.0
         },
-        "actual_duration_days": {
-            "lower_bound": 55.0,
-            "upper_bound": 438.0
+        "budget_usd": {
+            "lower_bound": 81431.845,
+            "upper_bound": 2841972.206400009
+        },
+        "requirement_changes_count": {
+            "lower_bound": 0.0,
+            "upper_bound": 9.0
+        },
+        "vendor_dependency_count": {
+            "lower_bound": 0.0,
+            "upper_bound": 5.0
+        },
+        "milestones_missed": {
+            "lower_bound": 0.0,
+            "upper_bound": 8.0
         },
         "team_size": {
             "lower_bound": 2.0,
@@ -80,37 +98,9 @@
             "lower_bound": 0.08,
             "upper_bound": 37.080100000000094
         },
-        "stakeholder_count": {
-            "lower_bound": 1.0,
-            "upper_bound": 12.0
-        },
-        "requirement_changes_count": {
-            "lower_bound": 0.0,
-            "upper_bound": 9.0
-        },
-        "budget_usd": {
-            "lower_bound": 81431.845,
-            "upper_bound": 2841972.206400009
-        },
-        "actual_cost_usd": {
-            "lower_bound": 101179.3757,
-            "upper_bound": 3666169.403600001
-        },
-        "cost_overrun_pct": {
-            "lower_bound": -3.81,
-            "upper_bound": 58.25
-        },
-        "schedule_overrun_pct": {
-            "lower_bound": -4.79,
-            "upper_bound": 63.69
-        },
         "resource_availability_pct": {
             "lower_bound": 42.96,
             "upper_bound": 100.0
-        },
-        "vendor_dependency_count": {
-            "lower_bound": 0.0,
-            "upper_bound": 5.0
         },
         "communication_score": {
             "lower_bound": 35.09,
@@ -120,17 +110,9 @@
             "lower_bound": 34.899899999999995,
             "upper_bound": 100.0
         },
-        "previous_project_success_rate_pct": {
-            "lower_bound": 21.54,
-            "upper_bound": 100.0
-        },
         "tech_complexity_score": {
             "lower_bound": 3.52,
             "upper_bound": 96.5401000000001
-        },
-        "regulatory_compliance_load": {
-            "lower_bound": 0.0,
-            "upper_bound": 91.47010000000009
         },
         "scope_clarity_score": {
             "lower_bound": 23.07,
@@ -140,17 +122,9 @@
             "lower_bound": 0.0,
             "upper_bound": 81.7
         },
-        "safety_incidents": {
-            "lower_bound": 0.0,
-            "upper_bound": 5.0
-        },
         "defect_count": {
             "lower_bound": 0.0,
             "upper_bound": 16.0
-        },
-        "milestones_missed": {
-            "lower_bound": 0.0,
-            "upper_bound": 8.0
         }
     },
     "categorical_mappings": {
@@ -189,21 +163,11 @@
             "Middle East": 4,
             "North America": 5
         },
-        "contract_type": {
-            "Cost Plus": 0,
-            "Fixed Price": 1,
-            "Time & Material": 2
-        },
         "priority": {
             "Critical": 0,
             "High": 1,
             "Low": 2,
             "Medium": 3
-        },
-        "project_status": {
-            "Completed": 0,
-            "Delayed": 1,
-            "Failed": 2
         }
     },
     "scaler_params": {
@@ -211,9 +175,21 @@
             "median": 142.0,
             "iqr": 80.0
         },
-        "actual_duration_days": {
-            "median": 181.0,
-            "iqr": 107.0
+        "budget_usd": {
+            "median": 586681.875,
+            "iqr": 622652.2325
+        },
+        "requirement_changes_count": {
+            "median": 4.0,
+            "iqr": 2.0
+        },
+        "vendor_dependency_count": {
+            "median": 1.0,
+            "iqr": 1.0
+        },
+        "milestones_missed": {
+            "median": 3.0,
+            "iqr": 2.0
         },
         "team_size": {
             "median": 11.0,
@@ -227,37 +203,9 @@
             "median": 5.53,
             "iqr": 8.77
         },
-        "stakeholder_count": {
-            "median": 6.0,
-            "iqr": 4.0
-        },
-        "requirement_changes_count": {
-            "median": 4.0,
-            "iqr": 2.0
-        },
-        "budget_usd": {
-            "median": 586681.875,
-            "iqr": 622652.2325
-        },
-        "actual_cost_usd": {
-            "median": 739524.5900000001,
-            "iqr": 791751.7825000001
-        },
-        "cost_overrun_pct": {
-            "median": 26.59,
-            "iqr": 18.41
-        },
-        "schedule_overrun_pct": {
-            "median": 29.12,
-            "iqr": 20.35
-        },
         "resource_availability_pct": {
             "median": 78.05,
             "iqr": 20.25
-        },
-        "vendor_dependency_count": {
-            "median": 1.0,
-            "iqr": 1.0
         },
         "communication_score": {
             "median": 70.06,
@@ -267,17 +215,9 @@
             "median": 71.96,
             "iqr": 21.60000000000001
         },
-        "previous_project_success_rate_pct": {
-            "median": 68.03,
-            "iqr": 26.929999999999993
-        },
         "tech_complexity_score": {
             "median": 49.99,
             "iqr": 26.879999999999995
-        },
-        "regulatory_compliance_load": {
-            "median": 39.93,
-            "iqr": 29.799999999999997
         },
         "scope_clarity_score": {
             "median": 65.03,
@@ -287,17 +227,9 @@
             "median": 34.98,
             "iqr": 26.900000000000002
         },
-        "safety_incidents": {
-            "median": 0.0,
-            "iqr": 1.0
-        },
         "defect_count": {
             "median": 6.0,
             "iqr": 5.0
-        },
-        "milestones_missed": {
-            "median": 3.0,
-            "iqr": 2.0
         }
     },
     "train_samples": 160002,

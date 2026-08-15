@@ -191,7 +191,7 @@ def render_risk_analysis_page():
                                 <strong>Risk Score:</strong> <span style="color: {badge_color}; font-weight: 800; font-size: 1.6rem;">{risk_score}%</span>
                             </div>
                             <div style="background: #f8fafc; border-left: 4px solid #4f46e5; padding: 14px 18px; border-radius: 8px; font-size: 0.95rem; color: #475569; margin-bottom: 20px;">
-                                💡 <strong>Analysis Complete:</strong> The project information has been analyzed using the trained CatBoost model. Record saved live in MongoDB Atlas.
+                                💡 <strong>Analysis Complete:</strong> The project information has been analyzed using the trained CatBoost model. Record saved live in database.
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
