@@ -1,0 +1,213 @@
+====================================================================================================
+               AI-BASED PROJECT RISK FORECASTING SYSTEM - END-TO-END DOCUMENTATION
+====================================================================================================
+
+PROJECT OVERVIEW
+----------------
+The AI-Based Project Risk Forecasting System is an enterprise machine learning solution designed to predict,
+quantify, and mitigate project operational risk before delivery failures occur. Using a dataset of 200,000
+historical project records across 30 operational dimensions, the system trains, evaluates, and optimizes a
+CatBoost Multi-Class Gradient Boosted Decision Tree model to classify project risk into 4 severity levels:
+  - Low Risk      (Class 0)
+  - Medium Risk   (Class 1)
+  - High Risk     (Class 2)
+  - Critical Risk (Class 3)
+
+This document provides a comprehensive step-by-step technical summary of all 4 pipeline phases:
+  Phase 1: Exploratory Data Analysis (EDA)
+  Phase 2: Data Preprocessing & Target Leakage Removal
+  Phase 3: CatBoost Baseline Model Training & Evaluation
+  Phase 4: CatBoost Hyperparameter Optimization & Diagnostic Audit
+
+====================================================================================================
+PHASE 1: EXPLORATORY DATA ANALYSIS (EDA) [eda_analysis.py]
+====================================================================================================
+
+Objective:
+  Perform a deep-dive statistical and visual audit of the raw dataset (project_risk_dataset.csv) to understand
+  data distributions, detect missing values/outliers, and identify potential target leakage.
+
+Key Processes & Actions Executed:
+  1. Data Ingestion & Schema Audit:
+     - Loaded 200,000 project rows across 33 initial columns.
+     - Identified 23 numerical features (budget, actual cost, durations, overruns, defect counts, etc.)
+       and 7 categorical features (project_type, industry_sector, methodology, region, contract_type,
+       priority, project_status).
+     - Verified 0 missing values (100% complete dataset) and 0 duplicate records.
+
+  2. Target Leakage Discovery:
+     - Identified that `risk_score` is a continuous composite metric (0-100) that deterministically maps
+       to `risk_category`. Including `risk_score` in feature matrix X would cause 100% artificial target
+       leakage. Flagged `risk_score` and `project_id` for deletion in Phase 2.
+
+  3. Statistical & Outlier Analysis:
+     - Analyzed heavy-tailed financial variables (budget_usd up to $8.5M vs median $614K).
+     - Calculated Interquartile Range (IQR) bounds for all numerical features to measure extreme noise.
+
+  4. Visual Dashboards Exported (Saved in EDA_Reports/):
+     - 01_target_distribution_countplots.png   : Class counts & percentage proportions (Medium: 45%, High: 27.4%, Low: 18%, Critical: 9.6%).
+     - 02_numerical_histograms_distributions.png: Histograms & KDE plots for all 23 numerical variables.
+     - 03_outlier_boxplots.png                 : Boxplots highlighting extreme measurement outliers.
+     - 04_correlation_heatmap.png              : Pearson correlation heatmap showing feature relationships.
+     - 05_risk_score_vs_category_relationship.png: Violin & box plots demonstrating risk_score deterministic thresholds.
+     - 06_feature_risk_bivariate_analysis.png  : Bivariate analysis of cost/schedule overruns by risk category.
+
+====================================================================================================
+PHASE 2: DATA PREPROCESSING & LEAKAGE REMOVAL [preprocess_data.py]
+====================================================================================================
+
+Objective:
+  Prepare a clean, leak-free, production-grade feature matrix (X) and target vector (y) tailored for CatBoost
+  and general tree-based gradient boosting models.
+
+Key Processes & Actions Executed:
+  1. Target Leakage & Identifier Removal:
+     - Dropped `project_id` (unique row string identifier).
+     - Dropped `risk_score` (continuous target metric to prevent 100% artificial leakage).
+     - Retained 30 feature columns (23 numerical + 7 categorical).
+
+  2. Outlier Capping (Winsorization):
+     - Applied 1st and 99th percentile Quantile Capping to all 23 numerical features.
+     - Preserved all 200,000 dataset rows without data loss while bounding extreme measurement noise.
+
+  3. Feature & Target Encoding:
+     - Target Encoding: Converted `risk_category` strings to ordinal integers via LabelEncoder:
+       {'Low': 0, 'Medium': 1, 'High': 2, 'Critical': 3}.
+     - Categorical Feature Encoding: Mapped string categories to ordinal integers for universal CSV compatibility.
+     - Stored CatBoost categorical feature column names and indices.
+
+  4. Stratified Train-Test Split (80% / 20%):
+     - X_train.csv : 160,002 rows x 30 features
+     - X_test.csv  : 39,998 rows x 30 features
+     - y_train.csv : 160,002 target labels
+     - y_test.csv  : 39,998 target labels
+     - Maintained exact target class proportions across both training and testing splits.
+
+  5. Deployment Artifacts Saved (in preprocessing_objects/):
+     - target_encoder.joblib        : Target label mapping object.
+     - categorical_encoders.joblib : Categorical ordinal mapping lookups.
+     - outlier_capper.joblib       : 1st & 99th percentile capping threshold dictionary.
+     - scaler.joblib               : RobustScaler parameters (median & IQR).
+     - preprocessing_metadata.json : Feature names, data types, and CatBoost categorical indices.
+
+====================================================================================================
+PHASE 3: CATBOOST BASELINE MODEL TRAINING & EVALUATION [train_model.py]
+====================================================================================================
+
+Objective:
+  Train a multi-class CatBoostClassifier baseline model using MultiClass loss function, monitor early stopping,
+  and evaluate test set performance across multiple evaluation metrics.
+
+Key Processes & Actions Executed:
+  1. Data Preparation & Validation Split:
+     - Loaded X_train.csv, X_test.csv, y_train.csv, y_test.csv.
+     - Split X_train into internal training (80%) and internal validation (20%) sets for early stopping.
+
+  2. Model Construction & Training:
+     - Algorithm       : CatBoostClassifier
+     - Loss Function   : MultiClass
+     - Iterations      : 1,000 rounds (reached best iteration at round 999 with best test loss 0.1764)
+     - Learning Rate   : 0.08
+     - Tree Depth      : 6
+     - Early Stopping  : 50 rounds
+
+  3. Out-of-Sample Test Evaluation Results (40,000 Test Samples):
+     - Accuracy                 : 93.16%
+     - Macro Precision          : 93.38%
+     - Macro Recall             : 91.60%
+     - Macro F1-Score           : 92.44%
+     - Weighted F1-Score        : 93.14%
+     - Multi-Class Log Loss     : 0.1777
+     - ROC-AUC (OVR Macro)      : 0.9943
+
+     Per-Class Breakdown:
+       - Low Risk      : Precision 93.67% | Recall 91.52% | F1-Score 92.58% (7,194 samples)
+       - Medium Risk   : Precision 92.89% | Recall 96.11% | F1-Score 94.47% (18,000 samples)
+       - High Risk     : Precision 93.07% | Recall 91.47% | F1-Score 92.26% (10,951 samples)
+       - Critical Risk : Precision 93.89% | Recall 87.28% | F1-Score 90.46% (3,853 samples)
+
+  4. Exported Baseline Artifacts & Reports:
+     - Saved in Model_Reports/ : 01_confusion_matrix.png, 02_feature_importance.png,
+                                  03_roc_curves.png, 04_metrics_per_class.png
+     - Saved in models/        : catboost_risk_model.cbm, catboost_risk_model.joblib,
+                                  model_metadata.json
+
+====================================================================================================
+PHASE 4: CATBOOST HYPERPARAMETER OPTIMIZATION & DIAGNOSTIC AUDIT [optimize_catboost.py]
+====================================================================================================
+
+Objective:
+  Optimize model performance using 5-Fold Stratified Cross Validation across 8 core hyperparameters,
+  re-train on full data, and perform diagnostic audits for overfitting, underfitting, and data leakage.
+
+Key Processes & Actions Executed:
+  1. 5-Fold Cross Validation Setup:
+     - Evaluated parameter search distributions across 8 required hyperparameters:
+       * iterations           : [400, 600, 800]
+       * learning_rate        : [0.05, 0.08, 0.12]
+       * depth                : [4, 6, 8]
+       * l2_leaf_reg          : [1.0, 3.0, 5.0, 9.0]
+       * random_strength      : [0.1, 1.0, 5.0]
+       * bagging_temperature  : [0.0, 0.5, 1.0]
+       * border_count         : [64, 128, 254]
+       * min_data_in_leaf     : [1, 10, 25, 50]
+     - Executed RandomizedSearchCV (50 total model fits) using StratifiedKFold (k=5).
+
+  2. Re-training & Final Test Evaluation:
+     - Selected optimal hyperparameter configuration based on Cross-Validation Accuracy.
+     - Refit CatBoostClassifier on full X_train dataset.
+
+  3. Diagnostic Audit:
+     - Overfitting Check : PASSED (Training Accuracy vs Testing Accuracy delta < 5.0%).
+     - Underfitting Check: PASSED (Testing Accuracy > 93.0% capacity threshold).
+     - Data Leakage Check: PASSED (Clean feature matrix verified; project_id & risk_score excluded;
+                           top feature weight realistic at 19.74%).
+
+  4. Exported Optimization Artifacts (Saved in Optimized_Model/):
+     - optimized_catboost_model.pkl : Optimized CatBoost model binary.
+     - best_parameters.json        : Selected optimal hyperparameter dictionary.
+     - model_metrics.csv           : Baseline vs. Optimized comparative metric table.
+     - Visual Reports               : 01_confusion_matrix.png, 02_feature_importance.png,
+                                      03_roc_curves.png, 04_precision_recall_curves.png
+
+====================================================================================================
+TOP 10 FEATURE IMPORTANCES (KEY PROJECT RISK DRIVERS)
+====================================================================================================
+
+Rank | Feature Name                       | Importance Score | Domain Description
+-----|------------------------------------|------------------|------------------------------------------------
+ 1   | priority                           | 19.74%           | Project urgency & operational severity tier.
+ 2   | project_status                     | 8.54%            | Execution lifecycle phase.
+ 3   | tech_complexity_score              | 7.16%            | Technical ambiguity & delivery friction.
+ 4   | cost_overrun_pct                   | 6.92%            | Financial budget variance percentage.
+ 5   | regulatory_compliance_load         | 6.71%            | Compliance & governance overhead.
+ 6   | schedule_overrun_pct               | 6.34%            | Timeline delay & milestone slippage.
+ 7   | previous_project_success_rate_pct  | 6.20%            | Historical team track record.
+ 8   | external_dependency_score          | 6.02%            | Vendor & third-party dependency exposure.
+ 9   | scope_clarity_score                | 5.46%            | Requirement clarity before execution.
+ 10  | resource_availability_pct          | 5.05%            | Staffing allocation & capacity levels.
+
+====================================================================================================
+COMPLETE PROJECT ARTIFACT & REPOSITORY FILE DIRECTORY
+====================================================================================================
+
+c:\Users\ACER\Desktop\AIProject_risk\
+├── Project.txt                        # Master Project Technical Documentation (This file)
+├── eda_analysis.py                    # Phase 1: Exploratory Data Analysis Script
+├── preprocess_data.py                 # Phase 2: Data Preprocessing & Feature Engineering Script
+├── train_model.py                     # Phase 3: CatBoost Baseline Model Training Script
+├── optimize_catboost.py               # Phase 4: Hyperparameter Optimization & Diagnostics Script
+├── project_risk_dataset.csv           # Raw Dataset (200,000 rows x 33 columns)
+├── X_train.csv                        # Processed Training Features (160,002 rows x 30 columns)
+├── X_test.csv                         # Processed Testing Features (39,998 rows x 30 columns)
+├── y_train.csv                        # Processed Training Target Labels (160,002 rows)
+├── y_test.csv                         # Processed Testing Target Labels (39,998 rows)
+├── EDA_Reports/                       # Phase 1 Visual Charts (6 PNG Dashboards)
+├── preprocessing_objects/             # Phase 2 Encoders, Cappers & Metadata JSON
+├── Model_Reports/                     # Phase 3 Baseline Model Visual Charts (4 PNG Dashboards)
+├── models/                            # Phase 3 Saved CatBoost Baseline Models (.cbm, .joblib)
+└── Optimized_Model/                   # Phase 4 Saved Optimized Model (.pkl), JSON Params & Metrics
+
+====================================================================================================
+END OF DOCUMENTATION
+====================================================================================================

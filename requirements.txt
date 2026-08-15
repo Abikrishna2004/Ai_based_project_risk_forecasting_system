@@ -1,0 +1,22 @@
+# AI-Based Project Risk Forecasting System - Package Dependencies
+# Python 3.9+ Compatible Dependencies
+
+# Web Application Framework
+streamlit>=1.32.0
+
+# Data Science & Numerical Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Machine Learning & AI Forecasting Models
+catboost>=1.2.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+
+# Interactive Visualizations & Analytics
+plotly>=5.18.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Environment Variable Management
+python-dotenv>=1.0.0

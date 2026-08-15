@@ -1,0 +1,195 @@
+/* Dark Magenta & Neon Rose Authentication Portal Styling */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800;900&display=swap');
+
+/* Dual Theme Color Variables */
+:root {
+    --auth-bg-canvas: #140713;
+    --auth-card-bg: #1d0c1b;
+    --auth-border-color: rgba(225, 29, 126, 0.35);
+    --auth-text-primary: #ffffff;
+    --auth-text-secondary: #f472b6;
+    --auth-card-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --auth-bg-canvas: #140713;
+        --auth-card-bg: #1d0c1b;
+        --auth-border-color: rgba(225, 29, 126, 0.4);
+        --auth-text-primary: #ffffff;
+        --auth-text-secondary: #f472b6;
+        --auth-card-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
+    }
+}
+
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--auth-bg-canvas) !important;
+    background: radial-gradient(circle at 50% 15%, rgba(225, 29, 126, 0.22) 0%, rgba(20, 7, 19, 0.98) 65%, #140713 100%) !important;
+    color: var(--auth-text-primary) !important;
+}
+
+.stApp {
+    background-color: var(--auth-bg-canvas) !important;
+    background: radial-gradient(circle at 50% 15%, rgba(225, 29, 126, 0.22) 0%, rgba(20, 7, 19, 0.98) 65%, #140713 100%) !important;
+}
+
+/* Page Layout Bounds */
+.main .block-container {
+    max-width: 520px !important;
+    padding-top: 2rem !important;
+    padding-bottom: 2.5rem !important;
+}
+
+/* -----------------------------------------------------------------------------
+   1. CRISP SQUARE FORM CONTAINER WITH NEON ROSE BORDER
+----------------------------------------------------------------------------- */
+div[data-testid="stForm"] {
+    background: rgba(29, 12, 27, 0.9) !important;
+    border-radius: 4px !important;
+    padding: 34px 32px !important;
+    border: 2px solid var(--auth-border-color) !important;
+    box-shadow: var(--auth-card-shadow) !important;
+    backdrop-filter: blur(14px) !important;
+}
+
+/* Auth Header Titles */
+.auth-header-wrapper {
+    text-align: center;
+    margin-bottom: 22px;
+}
+
+.auth-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.1rem;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: -0.8px;
+    margin-bottom: 6px;
+    text-align: center;
+}
+
+.auth-subtitle {
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: #f472b6;
+    text-align: center;
+    margin-bottom: 18px;
+}
+
+/* -----------------------------------------------------------------------------
+   2. CURVED INPUT BOXES WITH NEON ROSE ACCENTS
+----------------------------------------------------------------------------- */
+div[data-baseweb="input"],
+div[data-baseweb="input"] > div,
+div[data-baseweb="select"],
+div[data-baseweb="select"] > div {
+    border-radius: 10px !important;
+    border: 2px solid rgba(225, 29, 126, 0.35) !important;
+    background-color: rgba(24, 7, 22, 0.8) !important;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Input Box Hover Effect */
+div[data-baseweb="input"]:hover,
+div[data-baseweb="input"]:hover > div,
+div[data-baseweb="select"]:hover,
+div[data-baseweb="select"]:hover > div {
+    border-color: #fb7185 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 16px rgba(225, 29, 126, 0.3) !important;
+}
+
+/* Input Box Focus Effect */
+div[data-baseweb="input"]:focus-within,
+div[data-baseweb="input"]:focus-within > div,
+div[data-baseweb="select"]:focus-within,
+div[data-baseweb="select"]:focus-within > div {
+    border-color: #e11d74 !important;
+    box-shadow: 0 0 0 3.5px rgba(225, 29, 126, 0.35) !important;
+}
+
+/* Input Text Style */
+input, select {
+    color: #ffffff !important;
+    font-weight: 500 !important;
+}
+
+/* -----------------------------------------------------------------------------
+   3. INPUT LABELS & PLACEHOLDERS TRANSITION EFFECTS
+----------------------------------------------------------------------------- */
+div[data-testid="stTextInput"] label,
+div[data-testid="stSelectbox"] label,
+div[data-testid="stTextInput"] label p,
+div[data-testid="stSelectbox"] label p {
+    font-weight: 700 !important;
+    font-size: 0.92rem !important;
+    color: #ffffff !important;
+    transition: color 0.25s ease !important;
+}
+
+/* Label Hover Accent Effect */
+div[data-testid="stTextInput"]:hover label,
+div[data-testid="stSelectbox"]:hover label,
+div[data-testid="stTextInput"]:hover label p,
+div[data-testid="stSelectbox"]:hover label p {
+    color: #fb7185 !important;
+}
+
+/* Placeholder Transition Effect */
+input::placeholder {
+    color: #f472b6 !important;
+    transition: color 0.25s ease, opacity 0.25s ease !important;
+    opacity: 0.75 !important;
+}
+
+div[data-baseweb="input"]:hover input::placeholder {
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+
+/* -----------------------------------------------------------------------------
+   4. FORM ACTION BUTTONS & NAVIGATION BUTTONS
+----------------------------------------------------------------------------- */
+.stButton {
+    width: 100% !important;
+    margin-top: 12px !important;
+    margin-bottom: 8px !important;
+}
+
+.stButton > button,
+.stButton > button * {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    opacity: 1 !important;
+    font-weight: 800 !important;
+    font-size: 0.95rem !important;
+    letter-spacing: 0.3px !important;
+}
+
+.stButton > button {
+    background: linear-gradient(135deg, #e11d74, #9f1239) !important;
+    border-radius: 8px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding: 0 24px !important;
+    border: none !important;
+    box-shadow: 0 4px 16px rgba(225, 29, 126, 0.35) !important;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    width: 100% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+}
+
+.stButton > button:hover,
+.stButton > button:hover * {
+    background: linear-gradient(135deg, #fb7185, #be123c) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 25px rgba(225, 29, 126, 0.5) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
