@@ -8,31 +8,14 @@ import json
 import joblib
 import pandas as pd
 import numpy as np
-
-MODEL_PATH = os.path.join(os.getcwd(), "Optimized_Model", "optimized_catboost_model.pkl")
-METADATA_PATH = os.path.join(os.getcwd(), "preprocessing_objects", "preprocessing_metadata.json")
-
-_cached_model = None
-_cached_metadata = None
+from models.model_loader import ModelLoader
 
 
 def load_model_and_metadata():
-    """Loads and caches the trained CatBoost model and preprocessing metadata."""
-    global _cached_model, _cached_metadata
-
-    if _cached_model is None:
-        if os.path.exists(MODEL_PATH):
-            _cached_model = joblib.load(MODEL_PATH)
-        else:
-            joblib_alt = os.path.join(os.getcwd(), "models", "catboost_risk_model.joblib")
-            if os.path.exists(joblib_alt):
-                _cached_model = joblib.load(joblib_alt)
-
-    if _cached_metadata is None and os.path.exists(METADATA_PATH):
-        with open(METADATA_PATH, "r", encoding="utf-8") as f:
-            _cached_metadata = json.load(f)
-
-    return _cached_model, _cached_metadata
+    """Loads and caches the trained 20-feature CatBoost model and preprocessing metadata via ModelLoader."""
+    model = ModelLoader.load_model()
+    metadata, _, _ = ModelLoader.load_preprocessing_objects()
+    return model, metadata
 
 
 def predict_project_risk(input_dict):
