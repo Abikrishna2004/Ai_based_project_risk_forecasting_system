@@ -138,6 +138,7 @@ def render_top_navigation():
                 padding: 16px 20px !important;
                 box-shadow: var(--card-shadow) !important;
                 backdrop-filter: blur(12px);
+                margin-bottom: 12px !important;
             }
 
             [data-testid="stMetricValue"], [data-testid="stMetricValue"] * {
@@ -152,6 +153,24 @@ def render_top_navigation():
                 -webkit-text-fill-color: #f472b6 !important;
                 font-size: 0.88rem !important;
                 font-weight: 700 !important;
+            }
+
+            /* Responsive Adjustments for Dashboard Top Navigation and Metrics */
+            @media (max-width: 768px) {
+                .dashboard-navbar-container {
+                    flex-direction: column !important;
+                    align-items: stretch !important;
+                    gap: 12px !important;
+                    padding: 14px !important;
+                }
+                .dashboard-brand {
+                    text-align: center !important;
+                    justify-content: center !important;
+                    margin-bottom: 6px !important;
+                }
+                [data-testid="stMetricValue"], [data-testid="stMetricValue"] * {
+                    font-size: 1.4rem !important;
+                }
             }
         </style>
     """, unsafe_allow_html=True)

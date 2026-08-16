@@ -29,6 +29,79 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Inject Master Global Responsive CSS for All Viewports (Desktop, Tablet, Mobile)
+st.markdown("""
+    <style>
+        /* Global Reset & Responsive Box Sizing */
+        html, body {
+            box-sizing: border-box;
+            overflow-x: hidden !important;
+        }
+        *, *:before, *:after {
+            box-sizing: inherit;
+        }
+
+        /* Container Max Widths */
+        .block-container {
+            max-width: 1240px !important;
+            padding-left: 1.5rem !important;
+            padding-right: 1.5rem !important;
+        }
+
+        /* Tablet Responsiveness (768px - 1024px) */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .block-container {
+                max-width: 95% !important;
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+            }
+            div[data-testid="stHorizontalBlock"] {
+                flex-wrap: wrap !important;
+                gap: 12px !important;
+            }
+            div[data-testid="column"] {
+                min-width: 45% !important;
+                flex: 1 1 45% !important;
+            }
+        }
+
+        /* Mobile Responsiveness (< 768px) */
+        @media (max-width: 767px) {
+            .block-container {
+                max-width: 100% !important;
+                padding-left: 10px !important;
+                padding-right: 10px !important;
+                padding-top: 0.8rem !important;
+            }
+            div[data-testid="stHorizontalBlock"] {
+                flex-direction: column !important;
+                gap: 10px !important;
+            }
+            div[data-testid="column"] {
+                width: 100% !important;
+                min-width: 100% !important;
+                flex: 1 1 100% !important;
+                margin-bottom: 8px !important;
+            }
+            h1 { font-size: 1.6rem !important; }
+            h2 { font-size: 1.35rem !important; }
+            h3 { font-size: 1.15rem !important; }
+            h4 { font-size: 1.05rem !important; }
+
+            /* Table & Plotly Chart Responsive Wrappers */
+            div[data-testid="stTable"], div[data-testid="stDataFrame"], .js-plotly-plot {
+                max-width: 100% !important;
+                overflow-x: auto !important;
+                display: block !important;
+            }
+
+            .stButton > button {
+                width: 100% !important;
+            }
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # Initialize Session State Variables
 if "current_page" not in st.session_state:
     st.session_state.current_page = "landing"
