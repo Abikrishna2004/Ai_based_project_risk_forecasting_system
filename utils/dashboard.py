@@ -6,7 +6,7 @@ Fetches real-time data from database and renders the enterprise dashboard with D
 import os
 import streamlit as st
 import pandas as pd
-from utils.database_client import get_user_dashboard_metrics
+from utils.api_client import get_user_dashboard_metrics
 
 
 def render_top_navigation():

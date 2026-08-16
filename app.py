@@ -13,7 +13,7 @@ from utils.visualization import render_visualization_page
 from utils.history import render_history_page
 from utils.profile import render_profile_page
 from utils.validators import is_valid_email, validate_registration_fields
-from utils.database_client import (
+from utils.api_client import (
     register_user,
     authenticate_user
 )

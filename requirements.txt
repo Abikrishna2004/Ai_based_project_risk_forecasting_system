@@ -1,8 +1,12 @@
 # AI-Based Project Risk Forecasting System - Package Dependencies
 # Python 3.9+ Compatible Dependencies
 
-# Web Application Framework
+# Web Application Framework & REST API Backend
 streamlit>=1.32.0
+fastapi>=0.109.0
+uvicorn>=0.27.0
+requests>=2.31.0
+python-multipart>=0.0.9
 
 # Data Science & Numerical Processing
 pandas>=2.0.0
@@ -18,5 +22,5 @@ plotly>=5.18.0
 matplotlib>=3.7.0
 seaborn>=0.12.0
 
-# Environment Variable Management
+# Environment Variable Management & Security
 python-dotenv>=1.0.0

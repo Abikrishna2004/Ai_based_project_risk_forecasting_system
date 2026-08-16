@@ -5,7 +5,7 @@ Implements exact form fields, 20-feature CatBoost model inference, database stor
 
 import streamlit as st
 from utils.predictor import predict_project_risk
-from utils.database_client import save_project_prediction
+from utils.api_client import save_project_prediction
 
 
 def render_risk_analysis_page():

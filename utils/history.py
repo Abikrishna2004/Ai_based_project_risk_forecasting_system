@@ -1,30 +1,43 @@
 """
 Prediction History Component for AI-Based Project Risk Forecasting System
-Implements Search & Filter, History Table, Empty State, and Detailed Project Modal View.
+Implements Search & Filter, History Table, Individual & Batch Deletion, and Detailed Project Modal View.
 """
 
 import streamlit as st
 import pandas as pd
-from utils.database_client import get_user_predictions
+from utils.api_client import get_user_predictions, delete_prediction, delete_all_predictions
 
 
 def render_history_page():
-    """Renders Project History with search, filter, sorting, table view, and detailed inspection."""
+    """Renders Project History with search, filter, sorting, table view, deletion, and detailed inspection."""
     user = st.session_state.get("user_doc", {})
     user_id = user.get("_id", "")
 
-    # Main Header
-    st.markdown("""
-        <div style="margin-bottom: 24px;">
-            <h2 style="font-size: 1.8rem; font-weight: 800; color: var(--text-primary);">PROJECT HISTORY</h2>
-            <p style="color: var(--text-secondary); font-size: 1rem;">
-                View and manage your previous project risk analyses.
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
+    # Main Header with Clear All Action Button
+    h_top1, h_top2 = st.columns([3, 1], vertical_alignment="center")
+    with h_top1:
+        st.markdown("""
+            <div style="margin-bottom: 16px;">
+                <h2 style="font-size: 1.8rem; font-weight: 800; color: var(--text-primary);">PROJECT HISTORY</h2>
+                <p style="color: var(--text-secondary); font-size: 1rem;">
+                    View and manage your previous project risk analyses.
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
 
     # Fetch real-time user predictions
     predictions = get_user_predictions(user_id)
+
+    with h_top2:
+        if predictions:
+            if st.button("🗑️ Clear History", key="btn_clear_all_history", use_container_width=True):
+                ok, msg = delete_all_predictions(user_id)
+                if ok:
+                    st.success(msg)
+                    st.session_state.selected_history_project = None
+                    st.rerun()
+                else:
+                    st.error(msg)
 
     # -------------------------------------------------------------------------
     # EMPTY STATE (WHEN USER HASN'T ANALYZED ANY PROJECTS YET)
@@ -101,6 +114,7 @@ def render_history_page():
 
     # Render History Table Cards
     for idx, item in enumerate(filtered_preds):
+        p_id = item.get("id") or item.get("_id")
         p_name = item.get("project_name", "Untitled")
         p_type = item.get("input_features", {}).get("project_type", "Software Development")
         r_level = item.get("risk_level", "Medium")
@@ -109,7 +123,7 @@ def render_history_page():
         badge_c = color_map.get(r_level, "#ef4444")
 
         # Table Row Layout
-        r_col1, r_col2, r_col3, r_col4, r_col5, r_col6 = st.columns([2.5, 2, 1.5, 1.2, 2, 1.5], vertical_alignment="center")
+        r_col1, r_col2, r_col3, r_col4, r_col5, r_col6, r_col7 = st.columns([2.5, 2, 1.5, 1.2, 2, 1.2, 1.0], vertical_alignment="center")
 
         with r_col1:
             st.markdown(f"**{p_name}**")
@@ -122,8 +136,17 @@ def render_history_page():
         with r_col5:
             st.markdown(f"<span style='color: var(--text-secondary); font-size: 0.85rem;'>{date_str}</span>", unsafe_allow_html=True)
         with r_col6:
-            if st.button("View Details", key=f"btn_details_{idx}"):
+            if st.button("View", key=f"btn_details_{idx}_{p_id}"):
                 st.session_state.selected_history_project = item
+        with r_col7:
+            if st.button("❌", key=f"btn_del_{idx}_{p_id}", help="Delete record"):
+                ok, msg = delete_prediction(p_id)
+                if ok:
+                    st.success(msg)
+                    st.session_state.selected_history_project = None
+                    st.rerun()
+                else:
+                    st.error(msg)
 
         st.markdown("<hr style='border-color: var(--border-color); margin: 8px 0;'>", unsafe_allow_html=True)
 
