@@ -348,10 +348,18 @@ def render_main_dashboard():
     else:
         table_data = []
         for p in predictions[:5]:
-            m_pred = p.get("model_predicted_category", p.get("risk_level", "Medium"))
-            o_cat = p.get("risk_category", p.get("risk_level", "Medium"))
-            p_conf = float(p.get("prediction_confidence", p.get("risk_score", 0.0)))
-            o_score = float(p.get("overall_risk_score", p.get("risk_score", 0.0)))
+            m_pred = p.get("model_predicted_category") or p.get("risk_level") or "Medium"
+            o_cat = p.get("risk_category") or p.get("risk_level") or "Medium"
+
+            try:
+                p_conf = float(p.get("prediction_confidence") if p.get("prediction_confidence") is not None else p.get("risk_score", 0.0))
+            except (ValueError, TypeError):
+                p_conf = 0.0
+
+            try:
+                o_score = float(p.get("overall_risk_score") if p.get("overall_risk_score") is not None else p.get("risk_score", 0.0))
+            except (ValueError, TypeError):
+                o_score = 0.0
 
             table_data.append({
                 "Project Name": p.get("project_name", "N/A"),

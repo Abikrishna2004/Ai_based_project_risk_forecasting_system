@@ -50,13 +50,21 @@ def render_visualization_page():
     # Find target stored prediction record
     target_pred = next((p for p in predictions if p.get("project_name") == selected_project_name), predictions[0])
 
-    project_name = target_pred.get("project_name", "Untitled Project")
-    model_predicted_category = target_pred.get("model_predicted_category", target_pred.get("risk_level", "Medium"))
-    risk_category = target_pred.get("risk_category", target_pred.get("risk_level", "Medium"))
-    prediction_confidence = float(target_pred.get("prediction_confidence", target_pred.get("risk_score", 0.0)))
-    overall_risk_score = float(target_pred.get("overall_risk_score", target_pred.get("risk_score", 0.0)))
-    features = target_pred.get("input_features", {})
+    project_name = target_pred.get("project_name") or "Untitled Project"
+    model_predicted_category = target_pred.get("model_predicted_category") or target_pred.get("risk_level") or "Medium"
+    risk_category = target_pred.get("risk_category") or target_pred.get("risk_level") or "Medium"
 
+    try:
+        prediction_confidence = float(target_pred.get("prediction_confidence") if target_pred.get("prediction_confidence") is not None else target_pred.get("risk_score", 0.0))
+    except (ValueError, TypeError):
+        prediction_confidence = 0.0
+
+    try:
+        overall_risk_score = float(target_pred.get("overall_risk_score") if target_pred.get("overall_risk_score") is not None else target_pred.get("risk_score", 0.0))
+    except (ValueError, TypeError):
+        overall_risk_score = 0.0
+
+    features = target_pred.get("input_features") or {}
     project_type = features.get("project_type", "Software Development")
 
     # Clean Enterprise Color Map
@@ -86,11 +94,11 @@ def render_visualization_page():
                 </div>
                 <div>
                     <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Model Prediction</div>
-                    <div style="font-size: 1.15rem; font-weight: 800; color: {model_badge_color};">{model_predicted_category.upper()} RISK</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: {model_badge_color};">{str(model_predicted_category).upper()} RISK</div>
                 </div>
                 <div>
                     <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Overall Risk Category</div>
-                    <div style="font-size: 1.15rem; font-weight: 800; color: {badge_color};">{risk_category.upper()} RISK</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: {badge_color};">{str(risk_category).upper()} RISK</div>
                 </div>
                 <div>
                     <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Overall Risk Score</div>

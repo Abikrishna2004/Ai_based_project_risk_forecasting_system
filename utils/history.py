@@ -77,21 +77,21 @@ def render_history_page():
 
     if search_query.strip():
         q = search_query.strip().lower()
-        filtered_preds = [p for p in filtered_preds if q in p.get("project_name", "").lower()]
+        filtered_preds = [p for p in filtered_preds if q in (p.get("project_name") or "").lower()]
 
     if filter_risk != "All Risk Levels":
         target_lvl = filter_risk.replace(" Risk", "").lower()
-        filtered_preds = [p for p in filtered_preds if target_lvl in str(p.get("risk_category", p.get("risk_level", ""))).lower()]
+        filtered_preds = [p for p in filtered_preds if target_lvl in str(p.get("risk_category") or p.get("risk_level") or "").lower()]
 
     # Apply Sorting
     if sort_by == "Most Recent":
-        filtered_preds.sort(key=lambda x: x.get("analyzed_at", ""), reverse=True)
+        filtered_preds.sort(key=lambda x: str(x.get("analyzed_at") or ""), reverse=True)
     elif sort_by == "Oldest First":
-        filtered_preds.sort(key=lambda x: x.get("analyzed_at", ""), reverse=False)
+        filtered_preds.sort(key=lambda x: str(x.get("analyzed_at") or ""), reverse=False)
     elif sort_by == "Highest Risk Score":
-        filtered_preds.sort(key=lambda x: float(x.get("overall_risk_score", x.get("risk_score", 0.0))), reverse=True)
+        filtered_preds.sort(key=lambda x: float(x.get("overall_risk_score") if x.get("overall_risk_score") is not None else x.get("risk_score", 0.0)), reverse=True)
     elif sort_by == "Lowest Risk Score":
-        filtered_preds.sort(key=lambda x: float(x.get("overall_risk_score", x.get("risk_score", 0.0))), reverse=False)
+        filtered_preds.sort(key=lambda x: float(x.get("overall_risk_score") if x.get("overall_risk_score") is not None else x.get("risk_score", 0.0)), reverse=False)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -127,12 +127,21 @@ def render_history_page():
     # Render History Table Rows
     for idx, item in enumerate(filtered_preds):
         p_id = item.get("id") or item.get("_id")
-        p_name = item.get("project_name", "Untitled")
-        m_pred = item.get("model_predicted_category", item.get("risk_level", "Medium"))
-        o_cat = item.get("risk_category", item.get("risk_level", "Medium"))
-        p_conf = float(item.get("prediction_confidence", item.get("risk_score", 0.0)))
-        o_score = float(item.get("overall_risk_score", item.get("risk_score", 0.0)))
-        date_str = item.get("analyzed_at", "N/A")
+        p_name = item.get("project_name") or "Untitled"
+        m_pred = item.get("model_predicted_category") or item.get("risk_level") or "Medium"
+        o_cat = item.get("risk_category") or item.get("risk_level") or "Medium"
+
+        try:
+            p_conf = float(item.get("prediction_confidence") if item.get("prediction_confidence") is not None else item.get("risk_score", 0.0))
+        except (ValueError, TypeError):
+            p_conf = 0.0
+
+        try:
+            o_score = float(item.get("overall_risk_score") if item.get("overall_risk_score") is not None else item.get("risk_score", 0.0))
+        except (ValueError, TypeError):
+            o_score = 0.0
+
+        date_str = item.get("analyzed_at") or "N/A"
         badge_c = color_map.get(o_cat, "#ef4444")
         m_badge_c = color_map.get(m_pred, "#f59e0b")
 
@@ -170,13 +179,22 @@ def render_history_page():
     # -------------------------------------------------------------------------
     if "selected_history_project" in st.session_state and st.session_state.selected_history_project:
         selected_p = st.session_state.selected_history_project
-        s_name = selected_p.get("project_name", "Untitled")
-        s_features = selected_p.get("input_features", {})
-        s_mpred = selected_p.get("model_predicted_category", selected_p.get("risk_level", "Medium"))
-        s_cat = selected_p.get("risk_category", selected_p.get("risk_level", "Medium"))
-        s_conf = float(selected_p.get("prediction_confidence", selected_p.get("risk_score", 0.0)))
-        s_overall = float(selected_p.get("overall_risk_score", selected_p.get("risk_score", 0.0)))
-        s_date = selected_p.get("analyzed_at", "N/A")
+        s_name = selected_p.get("project_name") or "Untitled"
+        s_features = selected_p.get("input_features") or {}
+        s_mpred = selected_p.get("model_predicted_category") or selected_p.get("risk_level") or "Medium"
+        s_cat = selected_p.get("risk_category") or selected_p.get("risk_level") or "Medium"
+
+        try:
+            s_conf = float(selected_p.get("prediction_confidence") if selected_p.get("prediction_confidence") is not None else selected_p.get("risk_score", 0.0))
+        except (ValueError, TypeError):
+            s_conf = 0.0
+
+        try:
+            s_overall = float(selected_p.get("overall_risk_score") if selected_p.get("overall_risk_score") is not None else selected_p.get("risk_score", 0.0))
+        except (ValueError, TypeError):
+            s_overall = 0.0
+
+        s_date = selected_p.get("analyzed_at") or "N/A"
         badge_color = color_map.get(s_cat, "#ef4444")
         m_badge_color = color_map.get(s_mpred, "#f59e0b")
 
@@ -191,13 +209,13 @@ def render_history_page():
                 <div style="font-size: 1.05rem; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
                     <strong>Model Prediction:</strong>
                     <span style="background: {m_badge_color}; color: #ffffff; font-weight: 800; padding: 4px 14px; border-radius: 10px; font-size: 0.88rem;">
-                        {s_mpred.upper()} RISK
+                        {str(s_mpred).upper()} RISK
                     </span>
                 </div>
                 <div style="font-size: 1.05rem; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
                     <strong>Overall Risk Category:</strong>
                     <span style="background: {badge_color}; color: #ffffff; font-weight: 800; padding: 4px 14px; border-radius: 10px; font-size: 0.88rem;">
-                        {s_cat.upper()} RISK
+                        {str(s_cat).upper()} RISK
                     </span>
                 </div>
                 <div style="font-size: 1.05rem; color: var(--text-primary); margin-bottom: 8px;">
