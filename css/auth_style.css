@@ -25,20 +25,23 @@
 
 html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
-    background-color: var(--auth-bg-canvas) !important;
-    background: radial-gradient(circle at 50% 15%, rgba(225, 29, 126, 0.22) 0%, rgba(20, 7, 19, 0.98) 65%, #140713 100%) !important;
+    background-color: #140713 !important;
+    background: linear-gradient(180deg, #1d0c1b 0%, #140713 100%) !important;
     color: var(--auth-text-primary) !important;
 }
 
-.stApp {
-    background-color: var(--auth-bg-canvas) !important;
-    background: radial-gradient(circle at 50% 15%, rgba(225, 29, 126, 0.22) 0%, rgba(20, 7, 19, 0.98) 65%, #140713 100%) !important;
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stHeader"], header {
+    background-color: #140713 !important;
+    background: linear-gradient(180deg, #1d0c1b 0%, #140713 100%) !important;
+    color: var(--auth-text-primary) !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
 /* Page Layout Bounds */
 .main .block-container {
     max-width: 520px !important;
-    padding-top: 2rem !important;
+    padding-top: 1.5rem !important;
     padding-bottom: 2.5rem !important;
 }
 
@@ -46,10 +49,10 @@ html, body, [class*="css"] {
    1. CRISP SQUARE FORM CONTAINER WITH NEON ROSE BORDER
 ----------------------------------------------------------------------------- */
 div[data-testid="stForm"] {
-    background: rgba(29, 12, 27, 0.9) !important;
-    border-radius: 4px !important;
+    background: rgba(29, 12, 27, 0.95) !important;
+    border-radius: 6px !important;
     padding: 34px 32px !important;
-    border: 2px solid var(--auth-border-color) !important;
+    border: 1.5px solid var(--auth-border-color) !important;
     box-shadow: var(--auth-card-shadow) !important;
     backdrop-filter: blur(14px) !important;
 }
@@ -62,9 +65,9 @@ div[data-testid="stForm"] {
 
 .auth-title {
     font-family: 'Outfit', sans-serif;
-    font-size: 2.1rem;
+    font-size: 2.2rem;
     font-weight: 900;
-    color: #ffffff;
+    color: #ffffff !important;
     letter-spacing: -0.8px;
     margin-bottom: 6px;
     text-align: center;
@@ -73,7 +76,7 @@ div[data-testid="stForm"] {
 .auth-subtitle {
     font-size: 0.98rem;
     font-weight: 600;
-    color: #f472b6;
+    color: #f472b6 !important;
     text-align: center;
     margin-bottom: 18px;
 }
@@ -86,8 +89,8 @@ div[data-baseweb="input"] > div,
 div[data-baseweb="select"],
 div[data-baseweb="select"] > div {
     border-radius: 10px !important;
-    border: 2px solid rgba(225, 29, 126, 0.35) !important;
-    background-color: rgba(24, 7, 22, 0.8) !important;
+    border: 1.5px solid rgba(225, 29, 126, 0.35) !important;
+    background-color: rgba(24, 7, 22, 0.9) !important;
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
@@ -224,4 +227,3 @@ div[data-baseweb="input"]:hover input::placeholder {
         margin-bottom: 8px !important;
     }
 }
-

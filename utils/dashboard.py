@@ -45,9 +45,9 @@ def render_top_navigation():
             }
 
             /* Responsive Canvas and High-Contrast Typography */
-            .stApp, [data-testid="stAppViewContainer"] {
+            .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stHeader"], header {
                 background-color: var(--bg-canvas) !important;
-                background: radial-gradient(circle at 50% 12%, rgba(225, 29, 126, 0.22) 0%, rgba(20, 7, 19, 0.98) 65%, #140713 100%) !important;
+                background: linear-gradient(180deg, #1d0c1b 0%, #140713 100%) !important;
                 color: var(--text-primary) !important;
             }
 
