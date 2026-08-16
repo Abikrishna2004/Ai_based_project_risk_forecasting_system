@@ -4,7 +4,16 @@ Communicates with FastAPI Backend REST API (http://127.0.0.1:8000) with automati
 """
 
 import os
+import sys
+import json
 import requests
+from pathlib import Path
+
+# Ensure project root is in sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 from utils.database_client import (
     register_user as db_register_user,
     authenticate_user as db_authenticate_user,
