@@ -193,8 +193,8 @@ def upload_profile_image(user_id, image_bytes, filename="avatar.jpg"):
 # -----------------------------------------------------------------------------
 # 3. PREDICTION & HISTORY MANAGEMENT
 # -----------------------------------------------------------------------------
-def save_project_prediction(user_id, email, project_name, risk_level, risk_score, input_features):
-    """Saves project risk prediction result."""
+def save_project_prediction(user_id, email, project_name, risk_level, risk_score, input_features, prediction_confidence=None, overall_risk_score=None):
+    """Saves project risk prediction result including separate confidence and overall risk score."""
     if _is_backend_online():
         try:
             payload = {
@@ -230,7 +230,7 @@ def save_project_prediction(user_id, email, project_name, risk_level, risk_score
         except Exception as e:
             print(f"[API CLIENT NOTICE] FastAPI save_prediction failed ({e}), using direct DB fallback.")
 
-    return db_save_project_prediction(user_id, email, project_name, risk_level, risk_score, input_features)
+    return db_save_project_prediction(user_id, email, project_name, risk_level, risk_score, input_features, prediction_confidence=prediction_confidence, overall_risk_score=overall_risk_score)
 
 
 def get_user_predictions(user_id):
@@ -266,6 +266,10 @@ def get_prediction_by_id(prediction_id):
     if row:
         item = dict(row)
         item["_id"] = str(item["id"])
+        if item.get("prediction_confidence") is None:
+            item["prediction_confidence"] = item.get("risk_score", 0.0)
+        if item.get("overall_risk_score") is None:
+            item["overall_risk_score"] = item.get("risk_score", 0.0)
         try:
             item["input_features"] = json.loads(item["input_features_json"])
         except Exception:

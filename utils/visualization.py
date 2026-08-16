@@ -1,61 +1,69 @@
 """
 Visualization Component for AI-Based Project Risk Forecasting System
-Renders detailed project factor charts, risk overview gauge, team & planning metrics, and quality insights.
+Renders detailed project factor charts, risk overview gauge using overall_risk_score,
+team & planning metrics, and quality insights from saved database prediction records.
 """
 
 import streamlit as st
 import pandas as pd
-from utils.database_client import get_user_predictions
+from utils.api_client import get_user_predictions
 
 
 def render_visualization_page():
-    """Renders the Project Analysis & Visualization page according to exact user specification."""
+    """Renders the Project Analysis & Visualization page using saved database records."""
     user = st.session_state.get("user_doc", {})
     user_id = user.get("_id", "")
 
     # Main Header
     st.markdown("""
         <div style="margin-bottom: 24px;">
-            <h2 style="font-size: 1.8rem; font-weight: 800; color: #0f172a;">PROJECT ANALYSIS & VISUALIZATION</h2>
-            <p style="color: #64748b; font-size: 1rem;">
-                Visualize your project data and understand the factors that influence its overall risk.
+            <h2 style="font-size: 1.8rem; font-weight: 800; color: var(--text-primary);">PROJECT ANALYSIS & VISUALIZATION</h2>
+            <p style="color: var(--text-secondary); font-size: 1rem;">
+                Visualize your stored project data and understand the factors that influence its overall risk score.
             </p>
         </div>
     """, unsafe_allow_html=True)
 
-    # Fetch real-time user prediction documents from MongoDB Atlas
+    # Fetch real-time user prediction documents from database
     predictions = get_user_predictions(user_id)
 
     if not predictions:
-        st.info("📊 **No project analysis data available yet.**\n\nPlease complete a project risk analysis first to see your project risk visualization.")
+        st.info("No project analysis data available yet. Please complete a project risk analysis first to see your project risk visualization.")
         v_col1, v_col2, v_col3 = st.columns([1.5, 2, 1.5])
         with v_col2:
-            if st.button("🚀 Start Risk Analysis", key="btn_viz_start"):
+            if st.button("Start Risk Analysis", key="btn_viz_start", use_container_width=True):
                 st.session_state.active_tab = "risk_analysis"
                 st.rerun()
         return
 
-    # Select project to visualize (default: most recent analyzed project)
+    # Select project to visualize (default: selected from history or most recent)
     project_names = [p.get("project_name", f"Project {i+1}") for i, p in enumerate(predictions)]
+    default_idx = 0
 
-    selected_project_name = st.selectbox("Select Analyzed Project to View Visualization:", project_names, index=0)
+    if "selected_history_project" in st.session_state and st.session_state.selected_history_project:
+        sel_name = st.session_state.selected_history_project.get("project_name")
+        if sel_name in project_names:
+            default_idx = project_names.index(sel_name)
 
-    # Find target prediction doc
+    selected_project_name = st.selectbox("Select Analyzed Project to View Visualization:", project_names, index=default_idx)
+
+    # Find target stored prediction record
     target_pred = next((p for p in predictions if p.get("project_name") == selected_project_name), predictions[0])
 
     project_name = target_pred.get("project_name", "Untitled Project")
     risk_level = target_pred.get("risk_level", "Medium")
-    risk_score = target_pred.get("risk_score", 0.0)
+    prediction_confidence = float(target_pred.get("prediction_confidence", target_pred.get("risk_score", 0.0)))
+    overall_risk_score = float(target_pred.get("overall_risk_score", target_pred.get("risk_score", 0.0)))
     features = target_pred.get("input_features", {})
 
     project_type = features.get("project_type", "Software Development")
 
-    # Color badge map
+    # Clean Enterprise Color Map
     color_map = {
-        "Low": "#10b981",
-        "Medium": "#f59e0b",
-        "High": "#ef4444",
-        "Critical": "#dc2626"
+        "Low": "#10b981",       # Green
+        "Medium": "#f59e0b",    # Amber/Orange
+        "High": "#ef4444",      # Red
+        "Critical": "#991b1b"   # Dark Red
     }
     badge_color = color_map.get(risk_level, "#ef4444")
 
@@ -64,70 +72,75 @@ def render_visualization_page():
     # -------------------------------------------------------------------------
     st.markdown("### PROJECT SUMMARY")
     st.markdown(f"""
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin-bottom: 28px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; margin-bottom: 28px; box-shadow: var(--card-shadow);">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
                 <div>
-                    <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Project Name</div>
-                    <div style="font-size: 1.25rem; font-weight: 800; color: #0f172a;">{project_name}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Project Name</div>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary);">{project_name}</div>
                 </div>
                 <div>
-                    <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Project Type</div>
-                    <div style="font-size: 1.15rem; font-weight: 700; color: #334155;">{project_type}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Project Type</div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">{project_type}</div>
                 </div>
                 <div>
-                    <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Predicted Risk</div>
-                    <div style="font-size: 1.15rem; font-weight: 800; color: {badge_color};">{risk_level} Risk</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Predicted Risk Category</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: {badge_color};">{risk_level.upper()} RISK</div>
                 </div>
                 <div>
-                    <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Risk Score</div>
-                    <div style="font-size: 1.3rem; font-weight: 800; color: {badge_color};">{risk_score}%</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Prediction Confidence</div>
+                    <div style="font-size: 1.2rem; font-weight: 800; color: {badge_color};">{prediction_confidence}%</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Overall Risk Score</div>
+                    <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary);">{overall_risk_score}%</div>
                 </div>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # 2. RISK OVERVIEW
+    # 2. RISK OVERVIEW (INDICATOR USES OVERALL_RISK_SCORE)
     # -------------------------------------------------------------------------
     st.markdown("### RISK OVERVIEW")
-    st.markdown("<p style='color: #64748b; margin-bottom: 16px;'>A clear visual representation of the predicted project risk.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: var(--text-secondary); margin-bottom: 16px;'>Visual representation of overall project risk severity score.</p>", unsafe_allow_html=True)
 
     st.markdown(f"""
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; margin-bottom: 32px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; margin-bottom: 32px; box-shadow: var(--card-shadow);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <span style="font-weight: 700; color: #0f172a;">Risk Score Indicator</span>
-                <span style="font-weight: 800; color: {badge_color}; font-size: 1.2rem;">{risk_score}%</span>
+                <span style="font-weight: 700; color: var(--text-primary);">Overall Risk Severity Indicator</span>
+                <span style="font-weight: 800; color: {badge_color}; font-size: 1.25rem;">{overall_risk_score}%</span>
             </div>
-            <div style="display: flex; height: 18px; border-radius: 10px; overflow: hidden; background: #e2e8f0; margin-bottom: 16px;">
-                <div style="width: {risk_score}%; background: {badge_color};" title="Risk Score: {risk_score}%"></div>
+            <div style="display: flex; height: 18px; border-radius: 10px; overflow: hidden; background: rgba(225, 29, 126, 0.1); margin-bottom: 16px;">
+                <div style="width: {overall_risk_score}%; background: {badge_color};" title="Overall Risk Score: {overall_risk_score}%"></div>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 0.88rem; font-weight: 600;">
-                <span style="color: #10b981;">🟢 Low Risk (0-35%)</span>
-                <span style="color: #f59e0b;">🟡 Medium Risk (36-65%)</span>
-                <span style="color: #ef4444;">🔴 High Risk (66-100%)</span>
+                <span style="color: #10b981;">Low Risk (0-35%)</span>
+                <span style="color: #f59e0b;">Medium Risk (36-65%)</span>
+                <span style="color: #ef4444;">High Risk (66-85%)</span>
+                <span style="color: #991b1b;">Critical Risk (86-100%)</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # 3. PROJECT FACTORS ANALYSIS (BAR CHART)
+    # 3. PROJECT FACTORS ANALYSIS (BAR CHART FOR 5 GOVERNANCE SCORES)
     # -------------------------------------------------------------------------
     st.markdown("### PROJECT FACTORS ANALYSIS")
-    st.markdown("<p style='color: #64748b; margin-bottom: 16px;'>Visualize the key project factors provided during the analysis.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: var(--text-secondary); margin-bottom: 16px;'>Key governance and assessment scores provided during analysis.</p>", unsafe_allow_html=True)
 
     factor_data = {
         "Project Factor": [
-            "Technical Complexity",
-            "Scope Clarity",
             "Communication Score",
-            "Sponsor Engagement",
-            "External Dependency"
+            "Sponsor Engagement Score",
+            "Technical Complexity Score",
+            "Scope Clarity Score",
+            "External Dependency Score"
         ],
         "Score": [
-            float(features.get("tech_complexity_score", 65.0)),
-            float(features.get("scope_clarity_score", 70.0)),
             float(features.get("communication_score", 75.0)),
             float(features.get("sponsor_engagement_score", 80.0)),
+            float(features.get("tech_complexity_score", 65.0)),
+            float(features.get("scope_clarity_score", 70.0)),
             float(features.get("external_dependency_score", 35.0))
         ]
     }
@@ -140,7 +153,7 @@ def render_visualization_page():
     # 4. TEAM & RESOURCE OVERVIEW
     # -------------------------------------------------------------------------
     st.markdown("### TEAM & RESOURCE OVERVIEW")
-    st.markdown("<p style='color: #64748b; margin-bottom: 16px;'>Visualize the team and resource-related project data.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: var(--text-secondary); margin-bottom: 16px;'>Team composition and resource allocation metrics.</p>", unsafe_allow_html=True)
 
     t1, t2, t3, t4 = st.columns(4)
     with t1:
@@ -158,7 +171,7 @@ def render_visualization_page():
     # 5. PROJECT PLANNING OVERVIEW
     # -------------------------------------------------------------------------
     st.markdown("### PROJECT PLANNING OVERVIEW")
-    st.markdown("<p style='color: #64748b; margin-bottom: 16px;'>Visualize important planning and project metrics.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: var(--text-secondary); margin-bottom: 16px;'>Schedule, budget, and planning metrics.</p>", unsafe_allow_html=True)
 
     p1, p2, p3, p4, p5 = st.columns(5)
     with p1:
@@ -178,7 +191,7 @@ def render_visualization_page():
     # 6. PROJECT QUALITY OVERVIEW
     # -------------------------------------------------------------------------
     st.markdown("### PROJECT QUALITY OVERVIEW")
-    st.markdown("<p style='color: #64748b; margin-bottom: 16px;'>Display the project quality-related information based on the analyzed input.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color: var(--text-secondary); margin-bottom: 16px;'>Quality defects and error metrics.</p>", unsafe_allow_html=True)
 
     q1, q2 = st.columns([1, 3])
     with q1:
@@ -190,13 +203,13 @@ def render_visualization_page():
     # 7. PROJECT ANALYSIS SUMMARY
     # -------------------------------------------------------------------------
     st.markdown("""
-        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-left: 5px solid #4f46e5; border-radius: 12px; padding: 24px; margin-top: 12px;">
-            <h4 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 8px;">PROJECT ANALYSIS SUMMARY</h4>
-            <p style="font-size: 0.98rem; color: #475569; margin-bottom: 8px; line-height: 1.5;">
-                The visualization above provides an overview of the project factors used in the risk analysis.
+        <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-left: 5px solid #e11d74; border-radius: 12px; padding: 24px; margin-top: 12px; box-shadow: var(--card-shadow);">
+            <h4 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">PROJECT ANALYSIS SUMMARY</h4>
+            <p style="font-size: 0.98rem; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.5;">
+                The visualization above displays the stored 20 input features and overall risk score retrieved from the database.
             </p>
-            <p style="font-size: 0.98rem; color: #475569; line-height: 1.5;">
-                Review the project metrics to understand the areas that may require attention and their relationship to the predicted project risk.
+            <p style="font-size: 0.98rem; color: var(--text-secondary); line-height: 1.5;">
+                Review the project metrics to understand key risk drivers and capacity constraints.
             </p>
         </div>
     """, unsafe_allow_html=True)

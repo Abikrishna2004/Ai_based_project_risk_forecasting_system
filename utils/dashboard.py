@@ -160,12 +160,12 @@ def render_top_navigation():
     active_tab = st.session_state.get("active_tab", "dashboard")
 
     with nav_cols[0]:
-        st.markdown('<div class="dashboard-brand">🛡️ AI Risk Forecasting</div>', unsafe_allow_html=True)
+        st.markdown('<div class="dashboard-brand">AI Risk Forecasting System</div>', unsafe_allow_html=True)
 
     with nav_cols[1]:
         if active_tab == "dashboard":
             st.markdown('<div class="active-nav-btn">', unsafe_allow_html=True)
-        if st.button("Dashboard", key="nav_dash"):
+        if st.button("Dashboard", key="nav_dash", use_container_width=True):
             st.session_state.active_tab = "dashboard"
             st.rerun()
         if active_tab == "dashboard":
@@ -174,7 +174,7 @@ def render_top_navigation():
     with nav_cols[2]:
         if active_tab == "risk_analysis":
             st.markdown('<div class="active-nav-btn">', unsafe_allow_html=True)
-        if st.button("Risk Analysis", key="nav_analysis"):
+        if st.button("Risk Analysis", key="nav_analysis", use_container_width=True):
             st.session_state.active_tab = "risk_analysis"
             st.rerun()
         if active_tab == "risk_analysis":
@@ -183,7 +183,7 @@ def render_top_navigation():
     with nav_cols[3]:
         if active_tab == "visualization":
             st.markdown('<div class="active-nav-btn">', unsafe_allow_html=True)
-        if st.button("Visualization", key="nav_viz"):
+        if st.button("Visualization", key="nav_viz", use_container_width=True):
             st.session_state.active_tab = "visualization"
             st.rerun()
         if active_tab == "visualization":
@@ -192,7 +192,7 @@ def render_top_navigation():
     with nav_cols[4]:
         if active_tab == "history":
             st.markdown('<div class="active-nav-btn">', unsafe_allow_html=True)
-        if st.button("History", key="nav_hist"):
+        if st.button("History", key="nav_hist", use_container_width=True):
             st.session_state.active_tab = "history"
             st.rerun()
         if active_tab == "history":
@@ -201,14 +201,14 @@ def render_top_navigation():
     with nav_cols[5]:
         if active_tab == "profile":
             st.markdown('<div class="active-nav-btn">', unsafe_allow_html=True)
-        if st.button("Profile", key="nav_prof"):
+        if st.button("Profile", key="nav_prof", use_container_width=True):
             st.session_state.active_tab = "profile"
             st.rerun()
         if active_tab == "profile":
             st.markdown('</div>', unsafe_allow_html=True)
 
     with nav_cols[6]:
-        if st.button("Logout", key="nav_logout"):
+        if st.button("Logout", key="nav_logout", use_container_width=True):
             st.session_state.authenticated = False
             st.session_state.user_doc = None
             st.session_state.current_page = "landing"
@@ -238,7 +238,7 @@ def render_main_dashboard():
     predictions = metrics["predictions"]
 
     # -------------------------------------------------------------------------
-    # WELCOME SECTION (INTEGRATED ACTION CARD)
+    # WELCOME SECTION
     # -------------------------------------------------------------------------
     st.markdown(f"""
         <div style="background: rgba(29, 12, 27, 0.85); border: 1.5px solid var(--border-color); border-radius: 18px; padding: 32px 32px 24px 32px; margin-bottom: 32px; box-shadow: var(--card-shadow); backdrop-filter: blur(14px);">
@@ -253,7 +253,7 @@ def render_main_dashboard():
 
     w_col1, w_col2, w_col3 = st.columns([1.5, 2, 1.5])
     with w_col2:
-        if st.button("🚀 Start Risk Analysis", key="btn_start_analysis", use_container_width=True):
+        if st.button("Start Risk Analysis", key="btn_start_analysis", use_container_width=True):
             st.session_state.active_tab = "risk_analysis"
             st.rerun()
 
@@ -295,7 +295,6 @@ def render_main_dashboard():
     if total_projects == 0:
         st.markdown("""
             <div style="background: rgba(29, 12, 27, 0.85); border: 1.5px solid var(--border-color); border-radius: 16px; padding: 36px; text-align: center; box-shadow: var(--card-shadow); backdrop-filter: blur(14px);">
-                <div style="font-size: 2.2rem; margin-bottom: 8px;">📊</div>
                 <h4 style="font-size: 1.15rem; font-weight: 800; color: #ffffff !important; margin-bottom: 6px;">No project analysis available yet.</h4>
                 <p style="font-size: 0.95rem; color: #f472b6 !important;">Start your first risk analysis to see your project risk distribution.</p>
             </div>
@@ -321,7 +320,6 @@ def render_main_dashboard():
     if total_projects == 0:
         st.markdown("""
             <div style="background: rgba(29, 12, 27, 0.85); border: 1.5px solid var(--border-color); border-radius: 16px; padding: 36px; text-align: center; box-shadow: var(--card-shadow); backdrop-filter: blur(14px);">
-                <div style="font-size: 2.2rem; margin-bottom: 8px;">📋</div>
                 <h4 style="font-size: 1.15rem; font-weight: 800; color: #ffffff !important; margin-bottom: 6px;">No projects analyzed yet.</h4>
             </div>
         """, unsafe_allow_html=True)
@@ -332,7 +330,8 @@ def render_main_dashboard():
                 "Project Name": p.get("project_name", "N/A"),
                 "Project Type": p.get("input_features", {}).get("project_type", "Software"),
                 "Risk Level": p.get("risk_level", "Medium"),
-                "Risk Score": f"{p.get('risk_score', 0.0)}%",
+                "Prediction Confidence": f"{p.get('prediction_confidence', p.get('risk_score', 0.0))}%",
+                "Overall Risk Score": f"{p.get('overall_risk_score', p.get('risk_score', 0.0))}%",
                 "Analyzed On": p.get("analyzed_at", "N/A")
             })
         st.table(pd.DataFrame(table_data))

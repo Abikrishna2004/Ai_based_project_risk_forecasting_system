@@ -1,7 +1,7 @@
 """
 CatBoost Model Inference Engine for Project Risk Prediction
 Validates 20 frontend features, applies categorical mappings and numerical outlier capping,
-and returns real-time CatBoost risk forecasts, confidence scores, and class probabilities.
+and returns real-time CatBoost risk forecasts, prediction confidence, and overall risk scores.
 """
 
 import os
@@ -13,7 +13,7 @@ import streamlit as st
 from pathlib import Path
 from models.model_loader import ModelLoader
 
-# Fallback 20-feature taxonomy
+# Exact 20-feature taxonomy in training order
 DEFAULT_FEATURES = [
     "project_type",
     "industry_sector",
@@ -114,22 +114,23 @@ def predict_project_risk(input_dict):
 
     Returns dict:
       - risk_category: str ("Low", "Medium", "High", "Critical")
-      - risk_score: float (highest class confidence percentage, e.g. 85.5%)
-      - weighted_risk_score: float (weighted risk score percentage)
+      - prediction_confidence: float (highest class confidence percentage, e.g. 71.8%)
+      - overall_risk_score: float (weighted risk score percentage 0-100%)
+      - risk_score: float (alias to prediction_confidence)
+      - weighted_risk_score: float (alias to overall_risk_score)
       - class_probabilities: dict of class percentages
-      - probabilities: dict of class percentages
     """
     try:
         model, metadata, capper, encoders = get_cached_model_and_metadata()
     except Exception as e:
         print(f"Error loading model/metadata: {e}")
         return {
-            "error": f"Failed to load model artifacts: {str(e)}"
+            "error": "Model prediction could not be completed because the model or preprocessing artifacts could not be loaded."
         }
 
     if model is None or metadata is None:
         return {
-            "error": "Model or preprocessing metadata could not be initialized."
+            "error": "Model prediction could not be completed because the model or preprocessing artifacts could not be loaded."
         }
 
     # Extract Feature Taxonomy
@@ -147,7 +148,7 @@ def predict_project_risk(input_dict):
             "missing_features": missing_features
         }
 
-    # 2. Extract and Process 20 Features (Ignore extra fields like project_name or old features)
+    # 2. Extract and Process 20 Features
     processed_row = {}
 
     # 2a. Categorical Encoding with Unseen Value Validation
@@ -165,7 +166,7 @@ def predict_project_risk(input_dict):
                 "error": err_unseen
             }
 
-    # 2b. Numerical Outlier Capping (No StandardScaler/MinMaxScaler)
+    # 2b. Numerical Outlier Capping
     bounds = capper if capper else metadata.get("capper_bounds", {})
     for col in num_cols:
         try:
@@ -207,32 +208,39 @@ def predict_project_risk(input_dict):
             {"0": "Low", "1": "Medium", "2": "High", "3": "Critical"}
         )
 
+        # Dynamic class label mapping from model.classes_ if present
+        class_labels = ["Low", "Medium", "High", "Critical"]
+        if hasattr(model, "classes_") and model.classes_ is not None and len(model.classes_) == 4:
+            raw_classes = list(model.classes_)
+            class_labels = [inv_target_map.get(str(c), str(c)) for c in raw_classes]
+
         # Highest probability class
         top_class_idx = int(np.argmax(probs))
-        raw_pred_str = str(top_class_idx)
-        risk_category = inv_target_map.get(raw_pred_str, "Medium")
+        risk_category = class_labels[top_class_idx] if top_class_idx < len(class_labels) else "Medium"
 
-        # Highest predicted class confidence percentage
-        confidence_pct = round(float(probs[top_class_idx]) * 100.0, 1)
+        # Prediction confidence percentage (highest class probability)
+        prediction_confidence = round(float(probs[top_class_idx]) * 100.0, 1)
 
-        # Weighted risk score percentage (Low=15, Medium=45, High=75, Critical=95)
+        # Overall weighted risk score percentage (Low=15.0, Medium=45.0, High=75.0, Critical=95.0)
         class_weights = [15.0, 45.0, 75.0, 95.0]
-        weighted_score = round(sum(p * w for p, w in zip(probs, class_weights)), 1)
+        overall_risk_score = round(sum(p * w for p, w in zip(probs, class_weights)), 1)
 
         # Class probabilities dictionary
         class_probs = {
-            inv_target_map.get(str(i), f"Class {i}"): round(float(p) * 100.0, 1)
-            for i, p in enumerate(probs)
+            label: round(float(p) * 100.0, 1)
+            for label, p in zip(class_labels, probs)
         }
 
         print(f"[DEBUG] Input DataFrame Shape: {df_input.shape}")
-        print(f"[DEBUG] Prediction Probabilities: {class_probs}")
-        print(f"[DEBUG] Final Predicted Category: {risk_category} (Confidence: {confidence_pct}%)")
+        print(f"[DEBUG] Class Probabilities: {class_probs}")
+        print(f"[DEBUG] Predicted Category: {risk_category} | Confidence: {prediction_confidence}% | Overall Risk Score: {overall_risk_score}%")
 
         return {
             "risk_category": risk_category,
-            "risk_score": confidence_pct,
-            "weighted_risk_score": weighted_score,
+            "prediction_confidence": prediction_confidence,
+            "overall_risk_score": overall_risk_score,
+            "risk_score": prediction_confidence,        # Alias for backward compatibility
+            "weighted_risk_score": overall_risk_score,  # Alias for backward compatibility
             "class_probabilities": class_probs,
             "probabilities": class_probs
         }
@@ -240,5 +248,5 @@ def predict_project_risk(input_dict):
     except Exception as e:
         print(f"[ERROR] Inference Exception: {e}")
         return {
-            "error": f"Model inference execution failed: {str(e)}"
+            "error": f"Model prediction could not be completed because model inference failed: {str(e)}"
         }

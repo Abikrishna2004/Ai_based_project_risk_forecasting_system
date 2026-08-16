@@ -55,8 +55,8 @@ def create_prediction(req: PredictionRequest, db: sqlite3.Connection = Depends(g
         )
 
     risk_category = prediction_result.get("risk_category", "Medium")
-    risk_score = prediction_result.get("risk_score", 50.0)
-    weighted_risk_score = prediction_result.get("weighted_risk_score", 50.0)
+    prediction_confidence = prediction_result.get("prediction_confidence", prediction_result.get("risk_score", 50.0))
+    overall_risk_score = prediction_result.get("overall_risk_score", prediction_result.get("weighted_risk_score", 50.0))
     class_probs = prediction_result.get("class_probabilities", {})
 
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -65,14 +65,16 @@ def create_prediction(req: PredictionRequest, db: sqlite3.Connection = Depends(g
     try:
         cursor.execute("""
             INSERT INTO project_predictions (
-                user_id, email, project_name, risk_level, risk_score, input_features_json, analyzed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                user_id, email, project_name, risk_level, risk_score, prediction_confidence, overall_risk_score, input_features_json, analyzed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             str(req.user_id),
             (req.email or "").strip().lower(),
             req.project_name.strip(),
             risk_category,
-            float(risk_score),
+            float(prediction_confidence),
+            float(prediction_confidence),
+            float(overall_risk_score),
             json.dumps(input_dict),
             timestamp
         ))
@@ -89,8 +91,10 @@ def create_prediction(req: PredictionRequest, db: sqlite3.Connection = Depends(g
             "success": True,
             "message": f"Prediction for project '{req.project_name}' created successfully!",
             "risk_category": risk_category,
-            "risk_score": risk_score,
-            "weighted_risk_score": weighted_risk_score,
+            "prediction_confidence": prediction_confidence,
+            "overall_risk_score": overall_risk_score,
+            "risk_score": prediction_confidence,
+            "weighted_risk_score": overall_risk_score,
             "class_probabilities": class_probs,
             "prediction_record": record_dict
         }
@@ -115,6 +119,11 @@ def get_user_predictions(user_id: str, db: sqlite3.Connection = Depends(get_db))
     for r in rows:
         item = dict(r)
         item["_id"] = str(item["id"])
+        if item.get("prediction_confidence") is None:
+            item["prediction_confidence"] = item.get("risk_score", 0.0)
+        if item.get("overall_risk_score") is None:
+            item["overall_risk_score"] = item.get("risk_score", 0.0)
+
         try:
             item["input_features"] = json.loads(item["input_features_json"])
         except Exception:
@@ -143,6 +152,11 @@ def get_prediction_by_id(prediction_id: int, db: sqlite3.Connection = Depends(ge
 
     item = dict(row)
     item["_id"] = str(item["id"])
+    if item.get("prediction_confidence") is None:
+        item["prediction_confidence"] = item.get("risk_score", 0.0)
+    if item.get("overall_risk_score") is None:
+        item["overall_risk_score"] = item.get("risk_score", 0.0)
+
     try:
         item["input_features"] = json.loads(item["input_features_json"])
     except Exception:

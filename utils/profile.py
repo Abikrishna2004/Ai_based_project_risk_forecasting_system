@@ -30,7 +30,6 @@ def render_profile_page():
     org_type = user.get("organization_type", "Startup")
     edu_cat = user.get("education_category", "College / University Student")
     designation = user.get("designation", "N/A")
-    avatar_url = user.get("profile_image")
 
     # Fetch real-time account metrics
     metrics = get_user_dashboard_metrics(user_id)
@@ -59,8 +58,7 @@ def render_profile_page():
 
     with p_col1:
         st.markdown(f"""
-            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; text-align: center; box-shadow: var(--card-shadow);">
-                <div style="font-size: 3.5rem; margin-bottom: 8px;">👤</div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; text-align: center; box-shadow: var(--card-shadow);">
                 <div style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary);">{full_name}</div>
                 <div style="font-size: 0.85rem; color: var(--text-secondary);">{designation or 'Member'}</div>
             </div>
@@ -112,7 +110,7 @@ def render_profile_page():
     # 3. ACCOUNT SETTINGS & UPDATE FORMS
     # -------------------------------------------------------------------------
     st.markdown("### ACCOUNT SETTINGS")
-    tab_edit, tab_pwd, tab_img = st.tabs(["✏️ Edit Profile", "🔑 Change Password", "🖼️ Profile Image"])
+    tab_edit, tab_pwd, tab_img = st.tabs(["Edit Profile", "Change Password", "Profile Image"])
 
     with tab_edit:
         with st.form("form_edit_profile"):

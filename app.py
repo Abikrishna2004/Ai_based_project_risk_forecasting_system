@@ -24,7 +24,7 @@ load_dotenv()
 # Page Configuration
 st.set_page_config(
     page_title="AI-Based Project Risk Forecasting System",
-    page_icon="🛡️",
+    page_icon="AI",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -93,13 +93,13 @@ elif st.session_state.current_page == "auth":
     # Header Navigation Back to Landing Page
     top_col1, top_col2 = st.columns([3.5, 1.5])
     with top_col2:
-        if st.button("🏠 Back to Home", key="btn_back_home", use_container_width=True):
+        if st.button("Back to Home", key="btn_back_home", use_container_width=True):
             st.session_state.current_page = "landing"
             st.query_params.clear()
             st.rerun()
 
     # -------------------------------------------------------------------------
-    # LOGIN VIEW (SQUARE FORM CARD + CURVED INPUT BORDERS)
+    # LOGIN VIEW
     # -------------------------------------------------------------------------
     if st.session_state.auth_mode == "login":
         st.markdown("""
@@ -136,7 +136,7 @@ elif st.session_state.current_page == "auth":
                     st.success("Signed in successfully!")
                     st.rerun()
                 else:
-                    st.error(f"❌ {result}")
+                    st.error(f"Authentication Error: {result}")
 
         st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
         if st.button("Create Account", key="goto_reg_btn", use_container_width=True):
@@ -147,7 +147,7 @@ elif st.session_state.current_page == "auth":
             st.rerun()
 
     # -------------------------------------------------------------------------
-    # REGISTER VIEW (SQUARE FORM CARD + CURVED INPUT BORDERS)
+    # REGISTER VIEW
     # -------------------------------------------------------------------------
     elif st.session_state.auth_mode == "register":
         st.markdown("""
@@ -186,10 +186,10 @@ elif st.session_state.current_page == "auth":
                 "Education / Occupation Category *",
                 key="reg_edu",
                 options=[
-                    "🎓 College / University Student",
-                    "🎒 School Student",
-                    "💼 Working Professional / Corporate",
-                    "🔬 Research Scholar"
+                    "College / University Student",
+                    "School Student",
+                    "Working Professional / Corporate",
+                    "Research Scholar"
                 ]
             )
 
@@ -203,18 +203,18 @@ elif st.session_state.current_page == "auth":
             experience_level = ""
 
             if "School Student" in edu_category:
-                st.markdown("###### 🎒 School Details")
+                st.markdown("###### School Details")
                 standard = st.selectbox("Standard / Grade *", ["8th Grade", "9th Grade", "10th Grade", "11th Grade", "12th Grade"], key="reg_std")
                 school_name = st.text_input("School Name *", placeholder="St. Xavier's High School", key="reg_sch")
 
             elif "College" in edu_category or "Research Scholar" in edu_category:
-                st.markdown("###### 🎓 Higher Education Details")
+                st.markdown("###### Higher Education Details")
                 degree = st.selectbox("Degree / Major *", ["B.Tech / B.E", "B.Sc", "BCA", "M.Tech", "MBA", "Ph.D", "M.Sc", "MCA", "Diploma", "Other"], key="reg_deg")
                 academic_year = st.selectbox("Academic Year *", ["1st Year", "2nd Year", "3rd Year", "4th Year", "Post Graduate", "Alumni"], key="reg_yr")
                 university_name = st.text_input("Institution Name *", placeholder="Stanford University", key="reg_univ")
 
             elif "Working Professional" in edu_category:
-                st.markdown("###### 💼 Corporate Career Details")
+                st.markdown("###### Corporate Career Details")
                 designation = st.selectbox(
                     "Job Role / Designation *",
                     [
@@ -269,12 +269,12 @@ elif st.session_state.current_page == "auth":
                     st.balloons()
                     # AUTOMATIC REDIRECT TO SIGN IN PAGE ON REGISTRATION SUCCESS
                     st.session_state.auth_mode = "login"
-                    st.session_state.reg_success_msg = f"🎉 Account registered successfully for {reg_email}! Please sign in using your credentials."
+                    st.session_state.reg_success_msg = f"Account registered successfully for {reg_email}! Please sign in using your credentials."
                     st.query_params["page"] = "auth"
                     st.query_params["mode"] = "login"
                     st.rerun()
                 else:
-                    st.error(f"❌ {reg_result}")
+                    st.error(f"Registration Error: {reg_result}")
 
         st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
         if st.button("Sign In", key="goto_login_btn", use_container_width=True):

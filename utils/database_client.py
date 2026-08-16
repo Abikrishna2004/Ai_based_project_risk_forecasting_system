@@ -1,6 +1,6 @@
 """
 SQLite Database Engine for AI-Based Project Risk Forecasting System
-Provides zero-latency real-time data management for user authentication, registration, and risk prediction persistence.
+Provides real-time data management for user authentication, registration, and risk prediction persistence.
 """
 
 import os
@@ -26,7 +26,7 @@ def _get_db_connection():
 
 
 def _init_db_schema():
-    """Creates database tables if they do not exist."""
+    """Creates database tables and executes safe column migrations if they do not exist."""
     conn = _get_db_connection()
     cursor = conn.cursor()
 
@@ -47,9 +47,19 @@ def _init_db_schema():
             academic_year TEXT,
             designation TEXT,
             experience_level TEXT,
+            profile_image TEXT,
             created_at TEXT
         );
     """)
+
+    # Safe Migration: Check if profile_image column exists
+    cursor.execute("PRAGMA table_info(users);")
+    user_cols = [row["name"] for row in cursor.fetchall()]
+    if "profile_image" not in user_cols:
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN profile_image TEXT;")
+        except Exception:
+            pass
 
     # Predictions Table
     cursor.execute("""
@@ -60,10 +70,27 @@ def _init_db_schema():
             project_name TEXT NOT NULL,
             risk_level TEXT NOT NULL,
             risk_score REAL NOT NULL,
+            prediction_confidence REAL,
+            overall_risk_score REAL,
             input_features_json TEXT NOT NULL,
             analyzed_at TEXT
         );
     """)
+
+    # Safe Migrations for prediction_confidence and overall_risk_score
+    cursor.execute("PRAGMA table_info(project_predictions);")
+    pred_cols = [row["name"] for row in cursor.fetchall()]
+    if "prediction_confidence" not in pred_cols:
+        try:
+            cursor.execute("ALTER TABLE project_predictions ADD COLUMN prediction_confidence REAL;")
+        except Exception:
+            pass
+
+    if "overall_risk_score" not in pred_cols:
+        try:
+            cursor.execute("ALTER TABLE project_predictions ADD COLUMN overall_risk_score REAL;")
+        except Exception:
+            pass
 
     conn.commit()
     conn.close()
@@ -79,10 +106,7 @@ def hash_password(password):
 
 
 def register_user(user_data, custom_uri=None):
-    """
-    Registers a new user in the enterprise database.
-    Returns (success: bool, message: str).
-    """
+    """Registers a new user in the enterprise database."""
     email = user_data.get("email", "").strip().lower()
     if not email:
         return False, "Email address is required."
@@ -134,12 +158,8 @@ register_user_atlas = register_user
 
 
 def authenticate_user(email, password, custom_uri=None):
-    """
-    Authenticates user credentials against the enterprise database.
-    Returns (success: bool, user_doc: dict or message: str).
-    """
+    """Authenticates user credentials against the database."""
     email = email.strip().lower()
-    input_hash = hash_password(password)
 
     conn = _get_db_connection()
     cursor = conn.cursor()
@@ -152,7 +172,10 @@ def authenticate_user(email, password, custom_uri=None):
         return False, "No registered account found with this email."
 
     user_dict = dict(user_row)
-    if user_dict.get("password_hash") == input_hash:
+    stored_hash = user_dict.get("password_hash", "")
+
+    from backend.security import verify_password
+    if verify_password(password, stored_hash):
         user_dict["_id"] = str(user_dict["id"])
         return True, user_dict
 
@@ -163,12 +186,12 @@ def authenticate_user(email, password, custom_uri=None):
 authenticate_user_atlas = authenticate_user
 
 
-def save_project_prediction(user_id, email, project_name, risk_level, risk_score, input_features, custom_uri=None):
-    """
-    Saves project risk prediction results to the enterprise database.
-    Returns (success: bool, message: str).
-    """
+def save_project_prediction(user_id, email, project_name, risk_level, risk_score, input_features, prediction_confidence=None, overall_risk_score=None, custom_uri=None):
+    """Saves project risk prediction results including separate confidence and overall risk score."""
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    conf_val = float(prediction_confidence) if prediction_confidence is not None else float(risk_score)
+    overall_val = float(overall_risk_score) if overall_risk_score is not None else float(risk_score)
 
     conn = _get_db_connection()
     cursor = conn.cursor()
@@ -176,14 +199,16 @@ def save_project_prediction(user_id, email, project_name, risk_level, risk_score
     try:
         cursor.execute("""
             INSERT INTO project_predictions (
-                user_id, email, project_name, risk_level, risk_score, input_features_json, analyzed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                user_id, email, project_name, risk_level, risk_score, prediction_confidence, overall_risk_score, input_features_json, analyzed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             str(user_id),
             email.strip().lower(),
             project_name.strip(),
             risk_level,
-            float(risk_score),
+            float(conf_val),
+            float(conf_val),
+            float(overall_val),
             json.dumps(input_features),
             timestamp
         ))
@@ -196,10 +221,7 @@ def save_project_prediction(user_id, email, project_name, risk_level, risk_score
 
 
 def get_user_predictions(user_id, custom_uri=None):
-    """
-    Retrieves all project prediction records for a given user.
-    Returns list of prediction dictionaries.
-    """
+    """Retrieves all project prediction records for a given user."""
     conn = _get_db_connection()
     cursor = conn.cursor()
 
@@ -214,6 +236,11 @@ def get_user_predictions(user_id, custom_uri=None):
     for r in rows:
         item = dict(r)
         item["_id"] = str(item["id"])
+        if item.get("prediction_confidence") is None:
+            item["prediction_confidence"] = item.get("risk_score", 0.0)
+        if item.get("overall_risk_score") is None:
+            item["overall_risk_score"] = item.get("risk_score", 0.0)
+
         try:
             item["input_features"] = json.loads(item["input_features_json"])
         except Exception:
@@ -224,9 +251,7 @@ def get_user_predictions(user_id, custom_uri=None):
 
 
 def get_user_dashboard_metrics(user_id, custom_uri=None):
-    """
-    Calculates real-time project risk metrics for the user's dashboard.
-    """
+    """Calculates real-time project risk metrics for the user's dashboard."""
     predictions = get_user_predictions(user_id, custom_uri)
 
     total_projects = len(predictions)
@@ -248,7 +273,7 @@ def get_user_dashboard_metrics(user_id, custom_uri=None):
 
     for item in predictions:
         lvl = str(item.get("risk_level", "")).lower()
-        score = float(item.get("risk_score", 0.0))
+        score = float(item.get("overall_risk_score", item.get("risk_score", 0.0)))
         total_score_sum += score
 
         if "high" in lvl or "critical" in lvl:
