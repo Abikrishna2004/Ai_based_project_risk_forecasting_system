@@ -81,6 +81,7 @@ def init_db():
             prediction_confidence REAL,
             class_probabilities_json TEXT,
             input_features_json TEXT NOT NULL,
+            input_source TEXT DEFAULT 'manual',
             analyzed_at TEXT
         );
     """)
@@ -94,6 +95,7 @@ def init_db():
         ("overall_risk_score", "REAL"),
         ("prediction_confidence", "REAL"),
         ("class_probabilities_json", "TEXT"),
+        ("input_source", "TEXT DEFAULT 'manual'"),
     ]:
         if col not in pred_columns:
             try:

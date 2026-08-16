@@ -76,6 +76,7 @@ def _init_db_schema():
             prediction_confidence REAL,
             class_probabilities_json TEXT,
             input_features_json TEXT NOT NULL,
+            input_source TEXT DEFAULT 'manual',
             analyzed_at TEXT
         );
     """)
@@ -89,6 +90,7 @@ def _init_db_schema():
         ("overall_risk_score", "REAL"),
         ("prediction_confidence", "REAL"),
         ("class_probabilities_json", "TEXT"),
+        ("input_source", "TEXT DEFAULT 'manual'"),
     ]:
         if col not in pred_cols:
             try:
@@ -125,17 +127,17 @@ def register_user(user_data, custom_uri=None):
     try:
         cursor.execute("""
             INSERT INTO users (
-                first_name, last_name, email, password_hash,
-                organization_type, education_category, school_name, standard,
-                university_name, degree, academic_year, designation, experience_level, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                first_name, last_name, email, password_hash, organization_type,
+                education_category, school_name, standard, university_name, degree,
+                academic_year, designation, experience_level, profile_image, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             user_data.get("first_name", "").strip(),
             user_data.get("last_name", "").strip(),
             email,
             password_digest,
-            user_data.get("organization_type", "Startup"),
-            user_data.get("education_category", "College / University Student"),
+            user_data.get("organization_type", "Individual"),
+            user_data.get("education_category", ""),
             user_data.get("school_name", ""),
             user_data.get("standard", ""),
             user_data.get("university_name", ""),
@@ -143,51 +145,92 @@ def register_user(user_data, custom_uri=None):
             user_data.get("academic_year", ""),
             user_data.get("designation", ""),
             user_data.get("experience_level", ""),
+            user_data.get("profile_image", ""),
             timestamp
         ))
         conn.commit()
         conn.close()
         return True, f"Account registered successfully for '{email}'."
-
     except sqlite3.IntegrityError:
         conn.close()
-        return False, f"User with email '{email}' is already registered."
+        return False, f"An account with email '{email}' already exists."
     except Exception as e:
         conn.close()
-        return False, f"Registration Error: {e}"
-
-
-# Alias for backward compatibility
-register_user_atlas = register_user
+        return False, f"Registration failed: {str(e)}"
 
 
 def authenticate_user(email, password, custom_uri=None):
-    """Authenticates user credentials against the database."""
-    email = email.strip().lower()
+    """Authenticates user credentials against SQLite records."""
+    email_clean = email.strip().lower()
+    password_digest = hash_password(password)
 
     conn = _get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM users WHERE LOWER(email) = ?", (email,))
-    user_row = cursor.fetchone()
+    cursor.execute("""
+        SELECT * FROM users WHERE email = ? AND password_hash = ?
+    """, (email_clean, password_digest))
+
+    row = cursor.fetchone()
     conn.close()
 
-    if not user_row:
-        return False, "No registered account found with this email."
-
-    user_dict = dict(user_row)
-    stored_hash = user_dict.get("password_hash", "")
-
-    from backend.security import verify_password
-    if verify_password(password, stored_hash):
-        user_dict["_id"] = str(user_dict["id"])
-        return True, user_dict
-
-    return False, "Invalid password. Authentication failed."
+    if row:
+        user_doc = dict(row)
+        user_doc["_id"] = str(user_doc["id"])
+        return True, user_doc
+    return False, "Invalid email or password. Please check your credentials."
 
 
-# Alias for backward compatibility
-authenticate_user_atlas = authenticate_user
+def get_user_by_id(user_id, custom_uri=None):
+    """Fetches user record by primary key id."""
+    conn = _get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        user_doc = dict(row)
+        user_doc["_id"] = str(user_doc["id"])
+        return user_doc
+    return None
+
+
+def update_user_profile(user_id, profile_data, custom_uri=None):
+    """Updates user profile details."""
+    conn = _get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE users SET
+                first_name = ?, last_name = ?, organization_type = ?,
+                education_category = ?, school_name = ?, standard = ?,
+                university_name = ?, degree = ?, academic_year = ?,
+                designation = ?, experience_level = ?, profile_image = ?
+            WHERE id = ?
+        """, (
+            profile_data.get("first_name", "").strip(),
+            profile_data.get("last_name", "").strip(),
+            profile_data.get("organization_type", "Individual"),
+            profile_data.get("education_category", ""),
+            profile_data.get("school_name", ""),
+            profile_data.get("standard", ""),
+            profile_data.get("university_name", ""),
+            profile_data.get("degree", ""),
+            profile_data.get("academic_year", ""),
+            profile_data.get("designation", ""),
+            profile_data.get("experience_level", ""),
+            profile_data.get("profile_image", ""),
+            user_id
+        ))
+        conn.commit()
+        conn.close()
+        return True, "User profile updated successfully."
+    except Exception as e:
+        conn.close()
+        return False, f"Profile update failed: {str(e)}"
 
 
 def save_project_prediction(
@@ -202,11 +245,12 @@ def save_project_prediction(
     overall_risk_score=None,
     prediction_confidence=None,
     class_probabilities=None,
+    input_source="manual",
     custom_uri=None
 ):
     """
     Saves project risk prediction results including separate confidence, overall risk score,
-    model predicted category, final risk category, and class probabilities.
+    model predicted category, final risk category, class probabilities, and input source.
     """
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
@@ -224,8 +268,9 @@ def save_project_prediction(
             INSERT INTO project_predictions (
                 user_id, email, project_name, risk_level, risk_score,
                 model_predicted_category, risk_category, overall_risk_score,
-                prediction_confidence, class_probabilities_json, input_features_json, analyzed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                prediction_confidence, class_probabilities_json, input_features_json,
+                input_source, analyzed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             str(user_id),
             email.strip().lower(),
@@ -238,6 +283,7 @@ def save_project_prediction(
             float(conf_val),
             class_probs_json,
             json.dumps(input_features),
+            str(input_source or "manual").lower(),
             timestamp
         ))
         conn.commit()
@@ -264,29 +310,34 @@ def get_user_predictions(user_id, custom_uri=None):
     for r in rows:
         item = dict(r)
         item["_id"] = str(item["id"])
+        item["id"] = str(item["id"])
 
-        # Fallbacks for older DB records
+        if item.get("input_features_json"):
+            try:
+                item["input_features"] = json.loads(item["input_features_json"])
+            except Exception:
+                item["input_features"] = {}
+
+        if item.get("class_probabilities_json"):
+            try:
+                item["class_probabilities"] = json.loads(item["class_probabilities_json"])
+            except Exception:
+                item["class_probabilities"] = {}
+
         if not item.get("model_predicted_category"):
-            item["model_predicted_category"] = item.get("risk_level", "Medium")
+            item["model_predicted_category"] = item.get("risk_level") or "Medium"
 
         if not item.get("risk_category"):
-            item["risk_category"] = item.get("risk_level", "Medium")
+            item["risk_category"] = item.get("risk_level") or "Medium"
 
         if item.get("prediction_confidence") is None:
-            item["prediction_confidence"] = float(item.get("risk_score", 0.0))
+            item["prediction_confidence"] = float(item.get("risk_score") or 0.0)
 
         if item.get("overall_risk_score") is None:
-            item["overall_risk_score"] = float(item.get("risk_score", 0.0))
+            item["overall_risk_score"] = float(item.get("risk_score") or 0.0)
 
-        try:
-            item["class_probabilities"] = json.loads(item.get("class_probabilities_json", "{}"))
-        except Exception:
-            item["class_probabilities"] = {}
-
-        try:
-            item["input_features"] = json.loads(item.get("input_features_json", "{}"))
-        except Exception:
-            item["input_features"] = {}
+        if not item.get("input_source"):
+            item["input_source"] = "manual"
 
         predictions.append(item)
 
@@ -294,10 +345,10 @@ def get_user_predictions(user_id, custom_uri=None):
 
 
 def get_user_dashboard_metrics(user_id, custom_uri=None):
-    """Calculates real-time project risk metrics for the user's dashboard."""
-    predictions = get_user_predictions(user_id, custom_uri)
+    """Calculates summary dashboard KPI metrics directly from SQLite records."""
+    preds = get_user_predictions(user_id)
+    total_projects = len(preds)
 
-    total_projects = len(predictions)
     if total_projects == 0:
         return {
             "total_projects": 0,
@@ -310,35 +361,51 @@ def get_user_dashboard_metrics(user_id, custom_uri=None):
             "predictions": []
         }
 
-    high_count = 0
-    medium_count = 0
-    low_count = 0
-    critical_count = 0
-    total_overall_score_sum = 0.0
+    low_cnt = sum(1 for p in preds if (p.get("risk_category") or p.get("risk_level")) == "Low")
+    med_cnt = sum(1 for p in preds if (p.get("risk_category") or p.get("risk_level")) == "Medium")
+    high_cnt = sum(1 for p in preds if (p.get("risk_category") or p.get("risk_level")) == "High")
+    crit_cnt = sum(1 for p in preds if (p.get("risk_category") or p.get("risk_level")) == "Critical")
 
-    for item in predictions:
-        cat = str(item.get("risk_category", item.get("risk_level", ""))).lower()
-        score = float(item.get("overall_risk_score", item.get("risk_score", 0.0)))
-        total_overall_score_sum += score
-
-        if "critical" in cat:
-            critical_count += 1
-        elif "high" in cat:
-            high_count += 1
-        elif "medium" in cat:
-            medium_count += 1
-        else:
-            low_count += 1
-
-    avg_score = round(total_overall_score_sum / total_projects, 1)
+    scores = [float(p.get("overall_risk_score") if p.get("overall_risk_score") is not None else p.get("risk_score", 0.0)) for p in preds]
+    avg_score = round(sum(scores) / total_projects, 1)
 
     return {
         "total_projects": total_projects,
-        "high_risk_count": high_count,
-        "medium_risk_count": medium_count,
-        "low_risk_count": low_count,
-        "critical_risk_count": critical_count,
+        "high_risk_count": high_cnt,
+        "medium_risk_count": med_cnt,
+        "low_risk_count": low_cnt,
+        "critical_risk_count": crit_cnt,
         "avg_risk_score_pct": f"{avg_score}%",
         "avg_risk_score_num": avg_score,
-        "predictions": predictions
+        "predictions": preds
     }
+
+
+def delete_prediction_by_id(prediction_id, custom_uri=None):
+    """Deletes an individual prediction record by ID."""
+    conn = _get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("DELETE FROM project_predictions WHERE id = ?", (prediction_id,))
+        conn.commit()
+        conn.close()
+        return True, f"Prediction record #{prediction_id} deleted successfully."
+    except Exception as e:
+        conn.close()
+        return False, f"Failed to delete prediction: {e}"
+
+
+def delete_all_user_predictions(user_id, custom_uri=None):
+    """Clears all prediction records for a specific user."""
+    conn = _get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("DELETE FROM project_predictions WHERE user_id = ?", (str(user_id),))
+        conn.commit()
+        conn.close()
+        return True, "Complete project prediction history cleared successfully."
+    except Exception as e:
+        conn.close()
+        return False, f"Failed to clear history: {e}"

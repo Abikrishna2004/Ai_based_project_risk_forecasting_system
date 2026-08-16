@@ -204,9 +204,10 @@ def save_project_prediction(
     risk_category=None,
     overall_risk_score=None,
     prediction_confidence=None,
-    class_probabilities=None
+    class_probabilities=None,
+    input_source="manual"
 ):
-    """Saves project risk prediction result including separate confidence, overall risk score, and class probabilities."""
+    """Saves project risk prediction result including separate confidence, overall risk score, class probabilities, and input source."""
     if _is_backend_online():
         try:
             payload = {
@@ -253,7 +254,8 @@ def save_project_prediction(
         risk_category=risk_category,
         overall_risk_score=overall_risk_score,
         prediction_confidence=prediction_confidence,
-        class_probabilities=class_probabilities
+        class_probabilities=class_probabilities,
+        input_source=input_source
     )
 
 

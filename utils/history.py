@@ -1,6 +1,7 @@
 """
 Prediction History Component for AI-Based Project Risk Forecasting System
 Implements Search & Filter, History Table, Individual & Batch Deletion, and Detailed Project Inspection.
+Displays Source metadata (Manual, CSV, PDF).
 """
 
 import streamlit as st
@@ -112,8 +113,8 @@ def render_history_page():
     }
 
     # Render History Table Headers
-    th_col1, th_col2, th_col3, th_col4, th_col5, th_col6, th_col7, th_col8 = st.columns([2.0, 1.3, 1.3, 1.2, 1.2, 1.3, 1.2, 0.9])
-    with th_col1: st.markdown("**Project Name**")
+    th_col1, th_col2, th_col3, th_col4, th_col5, th_col6, th_col7, th_col8 = st.columns([2.0, 1.2, 1.2, 1.1, 1.1, 1.3, 1.2, 0.9])
+    with th_col1: st.markdown("**Project Name / Source**")
     with th_col2: st.markdown("**Model Pred.**")
     with th_col3: st.markdown("**Overall Risk**")
     with th_col4: st.markdown("**Risk Score**")
@@ -128,6 +129,7 @@ def render_history_page():
     for idx, item in enumerate(filtered_preds):
         p_id = item.get("id") or item.get("_id")
         p_name = item.get("project_name") or "Untitled"
+        p_source = str(item.get("input_source") or "manual").upper()
         m_pred = item.get("model_predicted_category") or item.get("risk_level") or "Medium"
         o_cat = item.get("risk_category") or item.get("risk_level") or "Medium"
 
@@ -145,10 +147,10 @@ def render_history_page():
         badge_c = color_map.get(o_cat, "#ef4444")
         m_badge_c = color_map.get(m_pred, "#f59e0b")
 
-        r_col1, r_col2, r_col3, r_col4, r_col5, r_col6, r_col7, r_col8 = st.columns([2.0, 1.3, 1.3, 1.2, 1.2, 1.3, 1.2, 0.9], vertical_alignment="center")
+        r_col1, r_col2, r_col3, r_col4, r_col5, r_col6, r_col7, r_col8 = st.columns([2.0, 1.2, 1.2, 1.1, 1.1, 1.3, 1.2, 0.9], vertical_alignment="center")
 
         with r_col1:
-            st.markdown(f"**{p_name}**")
+            st.markdown(f"**{p_name}** <span style='font-size: 0.72rem; background: rgba(225, 29, 126, 0.15); color: #fb7185; padding: 2px 6px; border-radius: 6px; margin-left: 6px;'>Source: {p_source}</span>", unsafe_allow_html=True)
         with r_col2:
             st.markdown(f"<span style='background: {m_badge_c}; color: #ffffff; font-weight: 700; padding: 3px 8px; border-radius: 8px; font-size: 0.78rem;'>{m_pred}</span>", unsafe_allow_html=True)
         with r_col3:
@@ -175,11 +177,12 @@ def render_history_page():
         st.markdown("<hr style='border-color: var(--border-color); margin: 6px 0;'>", unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # PROJECT DETAILS MODAL CARD WITH ALL 20 INPUT FEATURES
+    # PROJECT DETAILS MODAL CARD WITH ALL 20 INPUT FEATURES & SOURCE
     # -------------------------------------------------------------------------
     if "selected_history_project" in st.session_state and st.session_state.selected_history_project:
         selected_p = st.session_state.selected_history_project
         s_name = selected_p.get("project_name") or "Untitled"
+        s_source = str(selected_p.get("input_source") or "manual").upper()
         s_features = selected_p.get("input_features") or {}
         s_mpred = selected_p.get("model_predicted_category") or selected_p.get("risk_level") or "Medium"
         s_cat = selected_p.get("risk_category") or selected_p.get("risk_level") or "Medium"
@@ -205,6 +208,12 @@ def render_history_page():
             <div style="background: var(--bg-card); border: 2px solid {badge_color}; border-radius: 16px; padding: 28px; box-shadow: var(--card-shadow);">
                 <div style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 12px;">
                     <strong>Project Name:</strong> {s_name}
+                </div>
+                <div style="font-size: 1.05rem; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+                    <strong>Data Source:</strong>
+                    <span style="background: rgba(225, 29, 126, 0.2); color: #fb7185; font-weight: 800; padding: 3px 12px; border-radius: 8px; font-size: 0.85rem;">
+                        SOURCE: {s_source}
+                    </span>
                 </div>
                 <div style="font-size: 1.05rem; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
                     <strong>Model Prediction:</strong>
