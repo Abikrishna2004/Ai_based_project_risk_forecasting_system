@@ -158,52 +158,54 @@ def render_risk_analysis_page():
                     class_probabilities=class_probs
                 )
 
-                if save_ok:
-                    color_map = {
-                        "Low": "#10b981",       # Green
-                        "Medium": "#f59e0b",    # Amber/Orange
-                        "High": "#ef4444",      # Red
-                        "Critical": "#991b1b"   # Dark Red
-                    }
-                    badge_color = color_map.get(overall_risk_level, "#ef4444")
-                    model_badge_color = color_map.get(model_pred_category, "#f59e0b")
+                if not save_ok:
+                    st.warning(f"Note: {save_msg}")
 
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    st.markdown(f"""
-                        <div style="background: var(--bg-card); border: 2px solid {badge_color}; border-radius: 16px; padding: 30px; margin-top: 24px; box-shadow: var(--card-shadow);">
-                            <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--text-primary); margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-                                PROJECT RISK RESULT
-                            </h3>
-                            <div style="margin-bottom: 14px; font-size: 1.05rem; color: var(--text-primary);">
-                                <strong>Project Name:</strong> {project_name}
-                            </div>
-                            <div style="margin-bottom: 14px; font-size: 1.05rem; color: var(--text-primary); display: flex; align-items: center; gap: 12px;">
-                                <strong>Model Prediction:</strong>
-                                <span style="background: {model_badge_color}; color: #ffffff; font-weight: 800; padding: 4px 14px; border-radius: 12px; font-size: 0.92rem;">
-                                    {model_pred_category.upper()} RISK
-                                </span>
-                            </div>
-                            <div style="margin-bottom: 14px; font-size: 1.05rem; color: var(--text-primary); display: flex; align-items: center; gap: 12px;">
-                                <strong>Overall Risk Level:</strong>
-                                <span style="background: {badge_color}; color: #ffffff; font-weight: 800; padding: 4px 14px; border-radius: 12px; font-size: 0.92rem;">
-                                    {overall_risk_level.upper()} RISK
-                                </span>
-                            </div>
-                            <div style="margin-bottom: 14px; font-size: 1.05rem; color: var(--text-primary);">
-                                <strong>Overall Risk Score:</strong> <span style="color: var(--text-primary); font-weight: 800; font-size: 1.3rem;">{overall_risk_score}%</span>
-                            </div>
-                            <div style="margin-bottom: 18px; font-size: 1.05rem; color: var(--text-primary);">
-                                <strong>Prediction Confidence:</strong> <span style="color: {badge_color}; font-weight: 800; font-size: 1.25rem;">{pred_confidence}%</span>
-                            </div>
-                            <div style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.5; border-top: 1px dashed var(--border-color); padding-top: 14px;">
-                                <strong>Analysis Status:</strong> The project information has been successfully analyzed using the trained CatBoost model and saved to the database.
-                            </div>
+                color_map = {
+                    "Low": "#10b981",       # Green
+                    "Medium": "#f59e0b",    # Amber/Orange
+                    "High": "#ef4444",      # Red
+                    "Critical": "#991b1b"   # Dark Red
+                }
+                badge_color = color_map.get(overall_risk_level, "#ef4444")
+                model_badge_color = color_map.get(model_pred_category, "#f59e0b")
+
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown(f"""
+                    <div style="background: var(--bg-card); border: 2px solid {badge_color}; border-radius: 16px; padding: 30px; margin-top: 24px; box-shadow: var(--card-shadow);">
+                        <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--text-primary); margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                            PROJECT RISK RESULT
+                        </h3>
+                        <div style="margin-bottom: 14px; font-size: 1.05rem; color: var(--text-primary);">
+                            <strong>Project Name:</strong> {project_name}
                         </div>
-                    """, unsafe_allow_html=True)
+                        <div style="margin-bottom: 14px; font-size: 1.05rem; color: var(--text-primary); display: flex; align-items: center; gap: 12px;">
+                            <strong>Model Prediction:</strong>
+                            <span style="background: {model_badge_color}; color: #ffffff; font-weight: 800; padding: 4px 14px; border-radius: 12px; font-size: 0.92rem;">
+                                {model_pred_category.upper()} RISK
+                            </span>
+                        </div>
+                        <div style="margin-bottom: 14px; font-size: 1.05rem; color: var(--text-primary); display: flex; align-items: center; gap: 12px;">
+                            <strong>Overall Risk Level:</strong>
+                            <span style="background: {badge_color}; color: #ffffff; font-weight: 800; padding: 4px 14px; border-radius: 12px; font-size: 0.92rem;">
+                                {overall_risk_level.upper()} RISK
+                            </span>
+                        </div>
+                        <div style="margin-bottom: 14px; font-size: 1.05rem; color: var(--text-primary);">
+                            <strong>Overall Risk Score:</strong> <span style="color: var(--text-primary); font-weight: 800; font-size: 1.3rem;">{overall_risk_score}%</span>
+                        </div>
+                        <div style="margin-bottom: 18px; font-size: 1.05rem; color: var(--text-primary);">
+                            <strong>Prediction Confidence:</strong> <span style="color: {badge_color}; font-weight: 800; font-size: 1.25rem;">{pred_confidence}%</span>
+                        </div>
+                        <div style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.5; border-top: 1px dashed var(--border-color); padding-top: 14px;">
+                            <strong>Analysis Status:</strong> The project information has been successfully analyzed using the trained CatBoost model and saved to the database.
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
 
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    r_col1, r_col2, r_col3 = st.columns([1, 2, 1])
-                    with r_col2:
-                        if st.button("View Visualization", key="btn_view_viz_result", use_container_width=True):
-                            st.session_state.active_tab = "visualization"
-                            st.rerun()
+                st.markdown("<br>", unsafe_allow_html=True)
+                r_col1, r_col2, r_col3 = st.columns([1, 2, 1])
+                with r_col2:
+                    if st.button("View Visualization", key="btn_view_viz_result", use_container_width=True):
+                        st.session_state.active_tab = "visualization"
+                        st.rerun()

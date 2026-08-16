@@ -193,8 +193,20 @@ def upload_profile_image(user_id, image_bytes, filename="avatar.jpg"):
 # -----------------------------------------------------------------------------
 # 3. PREDICTION & HISTORY MANAGEMENT
 # -----------------------------------------------------------------------------
-def save_project_prediction(user_id, email, project_name, risk_level, risk_score, input_features, prediction_confidence=None, overall_risk_score=None):
-    """Saves project risk prediction result including separate confidence and overall risk score."""
+def save_project_prediction(
+    user_id,
+    email,
+    project_name,
+    risk_level,
+    risk_score,
+    input_features,
+    model_predicted_category=None,
+    risk_category=None,
+    overall_risk_score=None,
+    prediction_confidence=None,
+    class_probabilities=None
+):
+    """Saves project risk prediction result including separate confidence, overall risk score, and class probabilities."""
     if _is_backend_online():
         try:
             payload = {
@@ -230,7 +242,19 @@ def save_project_prediction(user_id, email, project_name, risk_level, risk_score
         except Exception as e:
             print(f"[API CLIENT NOTICE] FastAPI save_prediction failed ({e}), using direct DB fallback.")
 
-    return db_save_project_prediction(user_id, email, project_name, risk_level, risk_score, input_features, prediction_confidence=prediction_confidence, overall_risk_score=overall_risk_score)
+    return db_save_project_prediction(
+        user_id,
+        email,
+        project_name,
+        risk_level,
+        risk_score,
+        input_features,
+        model_predicted_category=model_predicted_category,
+        risk_category=risk_category,
+        overall_risk_score=overall_risk_score,
+        prediction_confidence=prediction_confidence,
+        class_probabilities=class_probabilities
+    )
 
 
 def get_user_predictions(user_id):
