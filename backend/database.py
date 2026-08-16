@@ -30,7 +30,7 @@ def get_db():
 
 
 def init_db():
-    """Initializes SQLite database schema and performs safe migration for profile_image column."""
+    """Initializes SQLite database schema and performs safe migrations for all tables."""
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -58,8 +58,8 @@ def init_db():
 
     # Safe Migration: Check if profile_image column exists, if not ADD IT
     cursor.execute("PRAGMA table_info(users);")
-    columns = [row["name"] for row in cursor.fetchall()]
-    if "profile_image" not in columns:
+    user_columns = [row["name"] for row in cursor.fetchall()]
+    if "profile_image" not in user_columns:
         try:
             cursor.execute("ALTER TABLE users ADD COLUMN profile_image TEXT;")
             print("[INFO] Added 'profile_image' column to users table.")
@@ -75,10 +75,32 @@ def init_db():
             project_name TEXT NOT NULL,
             risk_level TEXT NOT NULL,
             risk_score REAL NOT NULL,
+            model_predicted_category TEXT,
+            risk_category TEXT,
+            overall_risk_score REAL,
+            prediction_confidence REAL,
+            class_probabilities_json TEXT,
             input_features_json TEXT NOT NULL,
             analyzed_at TEXT
         );
     """)
+
+    # Safe Migration for project_predictions columns
+    cursor.execute("PRAGMA table_info(project_predictions);")
+    pred_columns = [row["name"] for row in cursor.fetchall()]
+    for col, col_type in [
+        ("model_predicted_category", "TEXT"),
+        ("risk_category", "TEXT"),
+        ("overall_risk_score", "REAL"),
+        ("prediction_confidence", "REAL"),
+        ("class_probabilities_json", "TEXT"),
+    ]:
+        if col not in pred_columns:
+            try:
+                cursor.execute(f"ALTER TABLE project_predictions ADD COLUMN {col} {col_type};")
+                print(f"[INFO] Added '{col}' column to project_predictions table.")
+            except Exception as e:
+                print(f"[NOTE] Migration notice for {col}: {e}")
 
     conn.commit()
     conn.close()

@@ -101,7 +101,7 @@ def render_risk_analysis_page():
         btn_submit = st.form_submit_button("Analyze Project Risk", use_container_width=True)
 
     # -------------------------------------------------------------------------
-    # PROCESS PREDICTION & RENDER RESULT
+    # PROCESS PREDICTION & RENDER RESULT CARD
     # -------------------------------------------------------------------------
     if btn_submit:
         if not project_name.strip():
@@ -137,31 +137,36 @@ def render_risk_analysis_page():
             if "error" in res:
                 st.error(res["error"])
             else:
-                risk_level = res["risk_category"]
-                pred_confidence = res.get("prediction_confidence", res.get("risk_score", 0.0))
-                overall_risk = res.get("overall_risk_score", res.get("weighted_risk_score", 0.0))
+                model_pred_category = res.get("model_predicted_category", "Medium")
+                overall_risk_level = res.get("risk_category", "Medium")
+                overall_risk_score = res.get("overall_risk_score", 50.0)
+                pred_confidence = res.get("prediction_confidence", 70.0)
+                class_probs = res.get("class_probabilities", {})
 
-                # Save prediction result to database in real-time
+                # Save prediction result to database
                 save_ok, save_msg = save_project_prediction(
                     user_id=user_id,
                     email=email,
                     project_name=project_name,
-                    risk_level=risk_level,
+                    risk_level=overall_risk_level,
                     risk_score=pred_confidence,
                     input_features=input_dict,
+                    model_predicted_category=model_pred_category,
+                    risk_category=overall_risk_level,
+                    overall_risk_score=overall_risk_score,
                     prediction_confidence=pred_confidence,
-                    overall_risk_score=overall_risk
+                    class_probabilities=class_probs
                 )
 
                 if save_ok:
-                    # Clean Enterprise Color Map
                     color_map = {
                         "Low": "#10b981",       # Green
                         "Medium": "#f59e0b",    # Amber/Orange
                         "High": "#ef4444",      # Red
                         "Critical": "#991b1b"   # Dark Red
                     }
-                    badge_color = color_map.get(risk_level, "#ef4444")
+                    badge_color = color_map.get(overall_risk_level, "#ef4444")
+                    model_badge_color = color_map.get(model_pred_category, "#f59e0b")
 
                     st.markdown("<br>", unsafe_allow_html=True)
                     st.markdown(f"""
@@ -173,16 +178,22 @@ def render_risk_analysis_page():
                                 <strong>Project Name:</strong> {project_name}
                             </div>
                             <div style="margin-bottom: 14px; font-size: 1.05rem; color: var(--text-primary); display: flex; align-items: center; gap: 12px;">
-                                <strong>Predicted Risk Category:</strong>
-                                <span style="background: {badge_color}; color: #ffffff; font-weight: 800; padding: 4px 16px; border-radius: 12px; font-size: 0.95rem;">
-                                    {risk_level.upper()} RISK
+                                <strong>Model Prediction:</strong>
+                                <span style="background: {model_badge_color}; color: #ffffff; font-weight: 800; padding: 4px 14px; border-radius: 12px; font-size: 0.92rem;">
+                                    {model_pred_category.upper()} RISK
+                                </span>
+                            </div>
+                            <div style="margin-bottom: 14px; font-size: 1.05rem; color: var(--text-primary); display: flex; align-items: center; gap: 12px;">
+                                <strong>Overall Risk Level:</strong>
+                                <span style="background: {badge_color}; color: #ffffff; font-weight: 800; padding: 4px 14px; border-radius: 12px; font-size: 0.92rem;">
+                                    {overall_risk_level.upper()} RISK
                                 </span>
                             </div>
                             <div style="margin-bottom: 14px; font-size: 1.05rem; color: var(--text-primary);">
-                                <strong>Prediction Confidence:</strong> <span style="color: {badge_color}; font-weight: 800; font-size: 1.25rem;">{pred_confidence}%</span>
+                                <strong>Overall Risk Score:</strong> <span style="color: var(--text-primary); font-weight: 800; font-size: 1.3rem;">{overall_risk_score}%</span>
                             </div>
                             <div style="margin-bottom: 18px; font-size: 1.05rem; color: var(--text-primary);">
-                                <strong>Overall Risk Score:</strong> <span style="color: var(--text-primary); font-weight: 800; font-size: 1.25rem;">{overall_risk}%</span>
+                                <strong>Prediction Confidence:</strong> <span style="color: {badge_color}; font-weight: 800; font-size: 1.25rem;">{pred_confidence}%</span>
                             </div>
                             <div style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.5; border-top: 1px dashed var(--border-color); padding-top: 14px;">
                                 <strong>Analysis Status:</strong> The project information has been successfully analyzed using the trained CatBoost model and saved to the database.

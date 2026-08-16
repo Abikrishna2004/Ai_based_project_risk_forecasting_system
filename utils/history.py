@@ -70,7 +70,7 @@ def render_history_page():
     with f_col2:
         filter_risk = st.selectbox("Risk Level", ["All Risk Levels", "High Risk", "Medium Risk", "Low Risk", "Critical Risk"])
     with f_col3:
-        sort_by = st.selectbox("Sort By", ["Most Recent", "Oldest First", "Highest Risk", "Lowest Risk"])
+        sort_by = st.selectbox("Sort By", ["Most Recent", "Oldest First", "Highest Risk Score", "Lowest Risk Score"])
 
     # Apply Filtering
     filtered_preds = list(predictions)
@@ -81,16 +81,16 @@ def render_history_page():
 
     if filter_risk != "All Risk Levels":
         target_lvl = filter_risk.replace(" Risk", "").lower()
-        filtered_preds = [p for p in filtered_preds if target_lvl in str(p.get("risk_level", "")).lower()]
+        filtered_preds = [p for p in filtered_preds if target_lvl in str(p.get("risk_category", p.get("risk_level", ""))).lower()]
 
     # Apply Sorting
     if sort_by == "Most Recent":
         filtered_preds.sort(key=lambda x: x.get("analyzed_at", ""), reverse=True)
     elif sort_by == "Oldest First":
         filtered_preds.sort(key=lambda x: x.get("analyzed_at", ""), reverse=False)
-    elif sort_by == "Highest Risk":
+    elif sort_by == "Highest Risk Score":
         filtered_preds.sort(key=lambda x: float(x.get("overall_risk_score", x.get("risk_score", 0.0))), reverse=True)
-    elif sort_by == "Lowest Risk":
+    elif sort_by == "Lowest Risk Score":
         filtered_preds.sort(key=lambda x: float(x.get("overall_risk_score", x.get("risk_score", 0.0))), reverse=False)
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -112,14 +112,15 @@ def render_history_page():
     }
 
     # Render History Table Headers
-    th_col1, th_col2, th_col3, th_col4, th_col5, th_col6, th_col7 = st.columns([2.2, 1.5, 1.2, 1.2, 1.2, 1.5, 1.0])
+    th_col1, th_col2, th_col3, th_col4, th_col5, th_col6, th_col7, th_col8 = st.columns([2.0, 1.3, 1.3, 1.2, 1.2, 1.3, 1.2, 0.9])
     with th_col1: st.markdown("**Project Name**")
-    with th_col2: st.markdown("**Risk Category**")
-    with th_col3: st.markdown("**Confidence**")
-    with th_col4: st.markdown("**Overall Score**")
-    with th_col5: st.markdown("**Date**")
-    with th_col6: st.markdown("**Action**")
-    with th_col7: st.markdown("**Delete**")
+    with th_col2: st.markdown("**Model Pred.**")
+    with th_col3: st.markdown("**Overall Risk**")
+    with th_col4: st.markdown("**Risk Score**")
+    with th_col5: st.markdown("**Confidence**")
+    with th_col6: st.markdown("**Analyzed Date**")
+    with th_col7: st.markdown("**Action**")
+    with th_col8: st.markdown("**Delete**")
 
     st.markdown("<hr style='border-color: var(--border-color); margin: 6px 0 12px 0;'>", unsafe_allow_html=True)
 
@@ -127,28 +128,32 @@ def render_history_page():
     for idx, item in enumerate(filtered_preds):
         p_id = item.get("id") or item.get("_id")
         p_name = item.get("project_name", "Untitled")
-        r_level = item.get("risk_level", "Medium")
-        p_conf = item.get("prediction_confidence", item.get("risk_score", 0.0))
-        o_score = item.get("overall_risk_score", item.get("risk_score", 0.0))
+        m_pred = item.get("model_predicted_category", item.get("risk_level", "Medium"))
+        o_cat = item.get("risk_category", item.get("risk_level", "Medium"))
+        p_conf = float(item.get("prediction_confidence", item.get("risk_score", 0.0)))
+        o_score = float(item.get("overall_risk_score", item.get("risk_score", 0.0)))
         date_str = item.get("analyzed_at", "N/A")
-        badge_c = color_map.get(r_level, "#ef4444")
+        badge_c = color_map.get(o_cat, "#ef4444")
+        m_badge_c = color_map.get(m_pred, "#f59e0b")
 
-        r_col1, r_col2, r_col3, r_col4, r_col5, r_col6, r_col7 = st.columns([2.2, 1.5, 1.2, 1.2, 1.2, 1.5, 1.0], vertical_alignment="center")
+        r_col1, r_col2, r_col3, r_col4, r_col5, r_col6, r_col7, r_col8 = st.columns([2.0, 1.3, 1.3, 1.2, 1.2, 1.3, 1.2, 0.9], vertical_alignment="center")
 
         with r_col1:
             st.markdown(f"**{p_name}**")
         with r_col2:
-            st.markdown(f"<span style='background: {badge_c}; color: #ffffff; font-weight: 700; padding: 3px 10px; border-radius: 10px; font-size: 0.8rem;'>{r_level}</span>", unsafe_allow_html=True)
+            st.markdown(f"<span style='background: {m_badge_c}; color: #ffffff; font-weight: 700; padding: 3px 8px; border-radius: 8px; font-size: 0.78rem;'>{m_pred}</span>", unsafe_allow_html=True)
         with r_col3:
-            st.markdown(f"**{p_conf}%**")
+            st.markdown(f"<span style='background: {badge_c}; color: #ffffff; font-weight: 700; padding: 3px 8px; border-radius: 8px; font-size: 0.78rem;'>{o_cat}</span>", unsafe_allow_html=True)
         with r_col4:
             st.markdown(f"**{o_score}%**")
         with r_col5:
-            st.markdown(f"<span style='color: var(--text-secondary); font-size: 0.82rem;'>{date_str}</span>", unsafe_allow_html=True)
+            st.markdown(f"**{p_conf}%**")
         with r_col6:
+            st.markdown(f"<span style='color: var(--text-secondary); font-size: 0.8rem;'>{date_str}</span>", unsafe_allow_html=True)
+        with r_col7:
             if st.button("View Details", key=f"btn_details_{idx}_{p_id}", use_container_width=True):
                 st.session_state.selected_history_project = item
-        with r_col7:
+        with r_col8:
             if st.button("Delete", key=f"btn_del_{idx}_{p_id}", use_container_width=True):
                 ok, msg = delete_prediction(p_id)
                 if ok:
@@ -167,31 +172,39 @@ def render_history_page():
         selected_p = st.session_state.selected_history_project
         s_name = selected_p.get("project_name", "Untitled")
         s_features = selected_p.get("input_features", {})
-        s_level = selected_p.get("risk_level", "Medium")
-        s_conf = selected_p.get("prediction_confidence", selected_p.get("risk_score", 0.0))
-        s_overall = selected_p.get("overall_risk_score", selected_p.get("risk_score", 0.0))
+        s_mpred = selected_p.get("model_predicted_category", selected_p.get("risk_level", "Medium"))
+        s_cat = selected_p.get("risk_category", selected_p.get("risk_level", "Medium"))
+        s_conf = float(selected_p.get("prediction_confidence", selected_p.get("risk_score", 0.0)))
+        s_overall = float(selected_p.get("overall_risk_score", selected_p.get("risk_score", 0.0)))
         s_date = selected_p.get("analyzed_at", "N/A")
-        badge_color = color_map.get(s_level, "#ef4444")
+        badge_color = color_map.get(s_cat, "#ef4444")
+        m_badge_color = color_map.get(s_mpred, "#f59e0b")
 
         st.markdown("<br><br>", unsafe_allow_html=True)
         st.markdown("### PROJECT DETAILS")
 
         st.markdown(f"""
             <div style="background: var(--bg-card); border: 2px solid {badge_color}; border-radius: 16px; padding: 28px; box-shadow: var(--card-shadow);">
-                <div style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 10px;">
+                <div style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 12px;">
                     <strong>Project Name:</strong> {s_name}
                 </div>
-                <div style="font-size: 1.1rem; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
-                    <strong>Predicted Risk Category:</strong>
-                    <span style="background: {badge_color}; color: #ffffff; font-weight: 800; padding: 4px 14px; border-radius: 12px; font-size: 0.9rem;">
-                        {s_level.upper()} RISK
+                <div style="font-size: 1.05rem; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+                    <strong>Model Prediction:</strong>
+                    <span style="background: {m_badge_color}; color: #ffffff; font-weight: 800; padding: 4px 14px; border-radius: 10px; font-size: 0.88rem;">
+                        {s_mpred.upper()} RISK
+                    </span>
+                </div>
+                <div style="font-size: 1.05rem; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
+                    <strong>Overall Risk Category:</strong>
+                    <span style="background: {badge_color}; color: #ffffff; font-weight: 800; padding: 4px 14px; border-radius: 10px; font-size: 0.88rem;">
+                        {s_cat.upper()} RISK
                     </span>
                 </div>
                 <div style="font-size: 1.05rem; color: var(--text-primary); margin-bottom: 8px;">
-                    <strong>Prediction Confidence:</strong> <span style="color: {badge_color}; font-weight: 800;">{s_conf}%</span>
+                    <strong>Overall Risk Score:</strong> <span style="color: var(--text-primary); font-weight: 800; font-size: 1.25rem;">{s_overall}%</span>
                 </div>
                 <div style="font-size: 1.05rem; color: var(--text-primary); margin-bottom: 16px;">
-                    <strong>Overall Risk Score:</strong> <span style="color: var(--text-primary); font-weight: 800;">{s_overall}%</span>
+                    <strong>Prediction Confidence:</strong> <span style="color: {badge_color}; font-weight: 800; font-size: 1.2rem;">{s_conf}%</span>
                 </div>
                 <div style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 20px;">
                     <strong>Analyzed On:</strong> {s_date}

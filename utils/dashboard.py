@@ -143,14 +143,14 @@ def render_top_navigation():
             [data-testid="stMetricValue"], [data-testid="stMetricValue"] * {
                 color: #ffffff !important;
                 -webkit-text-fill-color: #ffffff !important;
-                font-size: 2rem !important;
+                font-size: 1.8rem !important;
                 font-weight: 800 !important;
             }
 
             [data-testid="stMetricLabel"], [data-testid="stMetricLabel"] * {
                 color: #f472b6 !important;
                 -webkit-text-fill-color: #f472b6 !important;
-                font-size: 0.9rem !important;
+                font-size: 0.88rem !important;
                 font-weight: 700 !important;
             }
         </style>
@@ -231,11 +231,12 @@ def render_main_dashboard():
     metrics = get_user_dashboard_metrics(user_id)
 
     total_projects = metrics["total_projects"]
-    high_risk = metrics["high_risk_count"]
-    medium_risk = metrics["medium_risk_count"]
-    low_risk = metrics["low_risk_count"]
-    avg_risk_pct = metrics["avg_risk_score_pct"]
-    predictions = metrics["predictions"]
+    low_risk = metrics.get("low_risk_count", 0)
+    medium_risk = metrics.get("medium_risk_count", 0)
+    high_risk = metrics.get("high_risk_count", 0)
+    critical_risk = metrics.get("critical_risk_count", 0)
+    avg_risk_pct = metrics.get("avg_risk_score_pct", "0.0%")
+    predictions = metrics.get("predictions", [])
 
     # -------------------------------------------------------------------------
     # WELCOME SECTION
@@ -260,7 +261,7 @@ def render_main_dashboard():
     st.markdown("<br>", unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # PROJECT OVERVIEW (5 KPI METRICS CARDS)
+    # PROJECT OVERVIEW (6 KPI METRICS CARDS)
     # -------------------------------------------------------------------------
     st.markdown("""
         <div style="margin-bottom: 16px;">
@@ -268,18 +269,20 @@ def render_main_dashboard():
         </div>
     """, unsafe_allow_html=True)
 
-    kpi_col1, kpi_col2, kpi_col3, kpi_col4, kpi_col5 = st.columns(5)
+    kpi_col1, kpi_col2, kpi_col3, kpi_col4, kpi_col5, kpi_col6 = st.columns(6)
 
     with kpi_col1:
-        st.metric("Total Projects", total_projects, help="Projects analyzed through the system.")
+        st.metric("Total Projects", total_projects, help="Total projects analyzed.")
     with kpi_col2:
-        st.metric("High Risk", high_risk, help="Projects requiring immediate attention.")
+        st.metric("Low Risk", low_risk, help="Projects with overall risk score <= 35%")
     with kpi_col3:
-        st.metric("Medium Risk", medium_risk, help="Projects that should be monitored closely.")
+        st.metric("Medium Risk", medium_risk, help="Projects with overall risk score 36-65%")
     with kpi_col4:
-        st.metric("Low Risk", low_risk, help="Projects with relatively lower risk.")
+        st.metric("High Risk", high_risk, help="Projects with overall risk score 66-85%")
     with kpi_col5:
-        st.metric("Average Risk", avg_risk_pct, help="Average predicted risk score across analyzed projects.")
+        st.metric("Critical Risk", critical_risk, help="Projects with overall risk score 86-100%")
+    with kpi_col6:
+        st.metric("Average Risk Score", avg_risk_pct, help="Average overall_risk_score across all analyzed projects.")
 
     st.markdown("<br><br>", unsafe_allow_html=True)
 
@@ -301,10 +304,10 @@ def render_main_dashboard():
         """, unsafe_allow_html=True)
     else:
         dist_df = pd.DataFrame({
-            "Risk Level": ["High Risk", "Medium Risk", "Low Risk"],
-            "Count": [high_risk, medium_risk, low_risk]
+            "Risk Category": ["Low Risk", "Medium Risk", "High Risk", "Critical Risk"],
+            "Count": [low_risk, medium_risk, high_risk, critical_risk]
         })
-        st.bar_chart(dist_df.set_index("Risk Level"))
+        st.bar_chart(dist_df.set_index("Risk Category"))
 
     st.markdown("<br><br>", unsafe_allow_html=True)
 
@@ -326,12 +329,17 @@ def render_main_dashboard():
     else:
         table_data = []
         for p in predictions[:5]:
+            m_pred = p.get("model_predicted_category", p.get("risk_level", "Medium"))
+            o_cat = p.get("risk_category", p.get("risk_level", "Medium"))
+            p_conf = float(p.get("prediction_confidence", p.get("risk_score", 0.0)))
+            o_score = float(p.get("overall_risk_score", p.get("risk_score", 0.0)))
+
             table_data.append({
                 "Project Name": p.get("project_name", "N/A"),
-                "Project Type": p.get("input_features", {}).get("project_type", "Software"),
-                "Risk Level": p.get("risk_level", "Medium"),
-                "Prediction Confidence": f"{p.get('prediction_confidence', p.get('risk_score', 0.0))}%",
-                "Overall Risk Score": f"{p.get('overall_risk_score', p.get('risk_score', 0.0))}%",
+                "Model Prediction": f"{m_pred} Risk",
+                "Overall Risk Level": f"{o_cat} Risk",
+                "Overall Risk Score": f"{o_score}%",
+                "Prediction Confidence": f"{p_conf}%",
                 "Analyzed On": p.get("analyzed_at", "N/A")
             })
         st.table(pd.DataFrame(table_data))

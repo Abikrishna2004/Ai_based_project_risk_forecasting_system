@@ -1,7 +1,7 @@
 """
 CatBoost Model Inference Engine for Project Risk Prediction
 Validates 20 frontend features, applies categorical mappings and numerical outlier capping,
-and returns real-time CatBoost risk forecasts, prediction confidence, and overall risk scores.
+and returns real-time CatBoost risk forecasts, prediction confidence, and weighted overall risk scores.
 """
 
 import os
@@ -66,6 +66,25 @@ DEFAULT_NUMERICAL = [
 _startup_validated = False
 
 
+def get_risk_category_from_score(score: float) -> str:
+    """
+    Determines final risk category based on exact overall risk score ranges:
+      0 <= score <= 35: Low
+      35 < score <= 65: Medium
+      65 < score <= 85: High
+      85 < score <= 100: Critical
+    """
+    score = float(score)
+    if score <= 35.0:
+        return "Low"
+    elif score <= 65.0:
+        return "Medium"
+    elif score <= 85.0:
+        return "High"
+    else:
+        return "Critical"
+
+
 @st.cache_resource
 def get_cached_model_and_metadata():
     """
@@ -113,11 +132,10 @@ def predict_project_risk(input_dict):
     and executes CatBoost predict_proba().
 
     Returns dict:
+      - model_predicted_category: str ("Low", "Medium", "High", "Critical")
       - risk_category: str ("Low", "Medium", "High", "Critical")
-      - prediction_confidence: float (highest class confidence percentage, e.g. 71.8%)
-      - overall_risk_score: float (weighted risk score percentage 0-100%)
-      - risk_score: float (alias to prediction_confidence)
-      - weighted_risk_score: float (alias to overall_risk_score)
+      - overall_risk_score: float (weighted risk score 0.0-100.0)
+      - prediction_confidence: float (highest class confidence percentage, e.g. 70.0%)
       - class_probabilities: dict of class percentages
     """
     try:
@@ -202,13 +220,12 @@ def predict_project_risk(input_dict):
     try:
         probs = model.predict_proba(df_input)[0]
 
-        # Target class map
+        # Target class map (0: Low, 1: Medium, 2: High, 3: Critical)
         inv_target_map = metadata.get(
             "inverse_target_mapping",
             {"0": "Low", "1": "Medium", "2": "High", "3": "Critical"}
         )
 
-        # Dynamic class label mapping from model.classes_ if present
         class_labels = ["Low", "Medium", "High", "Critical"]
         if hasattr(model, "classes_") and model.classes_ is not None and len(model.classes_) == 4:
             raw_classes = list(model.classes_)
@@ -216,33 +233,46 @@ def predict_project_risk(input_dict):
 
         # Highest probability class
         top_class_idx = int(np.argmax(probs))
-        risk_category = class_labels[top_class_idx] if top_class_idx < len(class_labels) else "Medium"
+        model_predicted_category = class_labels[top_class_idx] if top_class_idx < len(class_labels) else "Medium"
 
-        # Prediction confidence percentage (highest class probability)
+        # Prediction Confidence (highest class probability percentage)
         prediction_confidence = round(float(probs[top_class_idx]) * 100.0, 1)
 
-        # Overall weighted risk score percentage (Low=15.0, Medium=45.0, High=75.0, Critical=95.0)
-        class_weights = [15.0, 45.0, 75.0, 95.0]
-        overall_risk_score = round(sum(p * w for p, w in zip(probs, class_weights)), 1)
+        # Class probabilities map (percentages and decimals)
+        class_probs_pct = {}
+        prob_dict_decimal = {}
+        for idx, label in enumerate(class_labels):
+            p_dec = float(probs[idx])
+            prob_dict_decimal[label] = p_dec
+            class_probs_pct[label] = round(p_dec * 100.0, 1)
 
-        # Class probabilities dictionary
-        class_probs = {
-            label: round(float(p) * 100.0, 1)
-            for label, p in zip(class_labels, probs)
-        }
+        # Weighted Overall Risk Score Calculation:
+        # Low = 20, Medium = 50, High = 75, Critical = 95
+        weights = {"Low": 20.0, "Medium": 50.0, "High": 75.0, "Critical": 95.0}
+        raw_weighted_score = (
+            prob_dict_decimal.get("Low", 0.0) * weights["Low"] +
+            prob_dict_decimal.get("Medium", 0.0) * weights["Medium"] +
+            prob_dict_decimal.get("High", 0.0) * weights["High"] +
+            prob_dict_decimal.get("Critical", 0.0) * weights["Critical"]
+        )
+        overall_risk_score = float(np.clip(round(raw_weighted_score, 1), 0.0, 100.0))
+
+        # Final Risk Category derived from overall_risk_score ranges
+        final_risk_category = get_risk_category_from_score(overall_risk_score)
 
         print(f"[DEBUG] Input DataFrame Shape: {df_input.shape}")
-        print(f"[DEBUG] Class Probabilities: {class_probs}")
-        print(f"[DEBUG] Predicted Category: {risk_category} | Confidence: {prediction_confidence}% | Overall Risk Score: {overall_risk_score}%")
+        print(f"[DEBUG] Class Probabilities: {class_probs_pct}")
+        print(f"[DEBUG] Model Predicted Category: {model_predicted_category} | Confidence: {prediction_confidence}%")
+        print(f"[DEBUG] Overall Risk Score: {overall_risk_score}% | Final Category: {final_risk_category}")
 
         return {
-            "risk_category": risk_category,
-            "prediction_confidence": prediction_confidence,
+            "model_predicted_category": model_predicted_category,
+            "risk_category": final_risk_category,
             "overall_risk_score": overall_risk_score,
+            "prediction_confidence": prediction_confidence,
+            "class_probabilities": class_probs_pct,
             "risk_score": prediction_confidence,        # Alias for backward compatibility
-            "weighted_risk_score": overall_risk_score,  # Alias for backward compatibility
-            "class_probabilities": class_probs,
-            "probabilities": class_probs
+            "weighted_risk_score": overall_risk_score   # Alias for backward compatibility
         }
 
     except Exception as e:

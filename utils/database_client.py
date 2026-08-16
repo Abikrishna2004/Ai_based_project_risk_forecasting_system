@@ -52,7 +52,7 @@ def _init_db_schema():
         );
     """)
 
-    # Safe Migration: Check if profile_image column exists
+    # Safe Migration for users
     cursor.execute("PRAGMA table_info(users);")
     user_cols = [row["name"] for row in cursor.fetchall()]
     if "profile_image" not in user_cols:
@@ -70,27 +70,31 @@ def _init_db_schema():
             project_name TEXT NOT NULL,
             risk_level TEXT NOT NULL,
             risk_score REAL NOT NULL,
-            prediction_confidence REAL,
+            model_predicted_category TEXT,
+            risk_category TEXT,
             overall_risk_score REAL,
+            prediction_confidence REAL,
+            class_probabilities_json TEXT,
             input_features_json TEXT NOT NULL,
             analyzed_at TEXT
         );
     """)
 
-    # Safe Migrations for prediction_confidence and overall_risk_score
+    # Safe Migrations for project_predictions columns
     cursor.execute("PRAGMA table_info(project_predictions);")
     pred_cols = [row["name"] for row in cursor.fetchall()]
-    if "prediction_confidence" not in pred_cols:
-        try:
-            cursor.execute("ALTER TABLE project_predictions ADD COLUMN prediction_confidence REAL;")
-        except Exception:
-            pass
-
-    if "overall_risk_score" not in pred_cols:
-        try:
-            cursor.execute("ALTER TABLE project_predictions ADD COLUMN overall_risk_score REAL;")
-        except Exception:
-            pass
+    for col, col_type in [
+        ("model_predicted_category", "TEXT"),
+        ("risk_category", "TEXT"),
+        ("overall_risk_score", "REAL"),
+        ("prediction_confidence", "REAL"),
+        ("class_probabilities_json", "TEXT"),
+    ]:
+        if col not in pred_cols:
+            try:
+                cursor.execute(f"ALTER TABLE project_predictions ADD COLUMN {col} {col_type};")
+            except Exception:
+                pass
 
     conn.commit()
     conn.close()
@@ -186,12 +190,31 @@ def authenticate_user(email, password, custom_uri=None):
 authenticate_user_atlas = authenticate_user
 
 
-def save_project_prediction(user_id, email, project_name, risk_level, risk_score, input_features, prediction_confidence=None, overall_risk_score=None, custom_uri=None):
-    """Saves project risk prediction results including separate confidence and overall risk score."""
+def save_project_prediction(
+    user_id,
+    email,
+    project_name,
+    risk_level,
+    risk_score,
+    input_features,
+    model_predicted_category=None,
+    risk_category=None,
+    overall_risk_score=None,
+    prediction_confidence=None,
+    class_probabilities=None,
+    custom_uri=None
+):
+    """
+    Saves project risk prediction results including separate confidence, overall risk score,
+    model predicted category, final risk category, and class probabilities.
+    """
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
+    model_pred_cat = model_predicted_category or risk_level
+    final_risk_cat = risk_category or risk_level
     conf_val = float(prediction_confidence) if prediction_confidence is not None else float(risk_score)
     overall_val = float(overall_risk_score) if overall_risk_score is not None else float(risk_score)
+    class_probs_json = json.dumps(class_probabilities) if class_probabilities else json.dumps({})
 
     conn = _get_db_connection()
     cursor = conn.cursor()
@@ -199,16 +222,21 @@ def save_project_prediction(user_id, email, project_name, risk_level, risk_score
     try:
         cursor.execute("""
             INSERT INTO project_predictions (
-                user_id, email, project_name, risk_level, risk_score, prediction_confidence, overall_risk_score, input_features_json, analyzed_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                user_id, email, project_name, risk_level, risk_score,
+                model_predicted_category, risk_category, overall_risk_score,
+                prediction_confidence, class_probabilities_json, input_features_json, analyzed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             str(user_id),
             email.strip().lower(),
             project_name.strip(),
-            risk_level,
+            final_risk_cat,
             float(conf_val),
-            float(conf_val),
+            model_pred_cat,
+            final_risk_cat,
             float(overall_val),
+            float(conf_val),
+            class_probs_json,
             json.dumps(input_features),
             timestamp
         ))
@@ -236,15 +264,30 @@ def get_user_predictions(user_id, custom_uri=None):
     for r in rows:
         item = dict(r)
         item["_id"] = str(item["id"])
+
+        # Fallbacks for older DB records
+        if not item.get("model_predicted_category"):
+            item["model_predicted_category"] = item.get("risk_level", "Medium")
+
+        if not item.get("risk_category"):
+            item["risk_category"] = item.get("risk_level", "Medium")
+
         if item.get("prediction_confidence") is None:
-            item["prediction_confidence"] = item.get("risk_score", 0.0)
+            item["prediction_confidence"] = float(item.get("risk_score", 0.0))
+
         if item.get("overall_risk_score") is None:
-            item["overall_risk_score"] = item.get("risk_score", 0.0)
+            item["overall_risk_score"] = float(item.get("risk_score", 0.0))
 
         try:
-            item["input_features"] = json.loads(item["input_features_json"])
+            item["class_probabilities"] = json.loads(item.get("class_probabilities_json", "{}"))
+        except Exception:
+            item["class_probabilities"] = {}
+
+        try:
+            item["input_features"] = json.loads(item.get("input_features_json", "{}"))
         except Exception:
             item["input_features"] = {}
+
         predictions.append(item)
 
     return predictions
@@ -261,7 +304,8 @@ def get_user_dashboard_metrics(user_id, custom_uri=None):
             "high_risk_count": 0,
             "medium_risk_count": 0,
             "low_risk_count": 0,
-            "avg_risk_score_pct": "0%",
+            "critical_risk_count": 0,
+            "avg_risk_score_pct": "0.0%",
             "avg_risk_score_num": 0.0,
             "predictions": []
         }
@@ -269,27 +313,31 @@ def get_user_dashboard_metrics(user_id, custom_uri=None):
     high_count = 0
     medium_count = 0
     low_count = 0
-    total_score_sum = 0.0
+    critical_count = 0
+    total_overall_score_sum = 0.0
 
     for item in predictions:
-        lvl = str(item.get("risk_level", "")).lower()
+        cat = str(item.get("risk_category", item.get("risk_level", ""))).lower()
         score = float(item.get("overall_risk_score", item.get("risk_score", 0.0)))
-        total_score_sum += score
+        total_overall_score_sum += score
 
-        if "high" in lvl or "critical" in lvl:
+        if "critical" in cat:
+            critical_count += 1
+        elif "high" in cat:
             high_count += 1
-        elif "medium" in lvl:
+        elif "medium" in cat:
             medium_count += 1
         else:
             low_count += 1
 
-    avg_score = round(total_score_sum / total_projects, 1)
+    avg_score = round(total_overall_score_sum / total_projects, 1)
 
     return {
         "total_projects": total_projects,
         "high_risk_count": high_count,
         "medium_risk_count": medium_count,
         "low_risk_count": low_count,
+        "critical_risk_count": critical_count,
         "avg_risk_score_pct": f"{avg_score}%",
         "avg_risk_score_num": avg_score,
         "predictions": predictions

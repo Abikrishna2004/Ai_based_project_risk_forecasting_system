@@ -115,6 +115,10 @@ class PredictionRecordResponse(BaseModel):
     project_name: str
     risk_level: str
     risk_score: float
+    model_predicted_category: Optional[str] = None
+    risk_category: Optional[str] = None
+    overall_risk_score: Optional[float] = None
+    prediction_confidence: Optional[float] = None
     input_features: Dict[str, Any]
     analyzed_at: str
 
@@ -122,7 +126,10 @@ class PredictionRecordResponse(BaseModel):
 class PredictionResponse(BaseModel):
     success: bool
     message: str
+    model_predicted_category: Optional[str] = None
     risk_category: Optional[str] = None
+    overall_risk_score: Optional[float] = None
+    prediction_confidence: Optional[float] = None
     risk_score: Optional[float] = None
     weighted_risk_score: Optional[float] = None
     class_probabilities: Optional[Dict[str, float]] = None
@@ -137,6 +144,7 @@ class DashboardMetricsResponse(BaseModel):
     high_risk_count: int
     medium_risk_count: int
     low_risk_count: int
+    critical_risk_count: Optional[int] = 0
     avg_risk_score_pct: str
     avg_risk_score_num: float
     predictions: List[Dict[str, Any]]

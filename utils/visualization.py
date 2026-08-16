@@ -36,7 +36,7 @@ def render_visualization_page():
                 st.rerun()
         return
 
-    # Select project to visualize (default: selected from history or most recent)
+    # Select project to visualize
     project_names = [p.get("project_name", f"Project {i+1}") for i, p in enumerate(predictions)]
     default_idx = 0
 
@@ -51,7 +51,8 @@ def render_visualization_page():
     target_pred = next((p for p in predictions if p.get("project_name") == selected_project_name), predictions[0])
 
     project_name = target_pred.get("project_name", "Untitled Project")
-    risk_level = target_pred.get("risk_level", "Medium")
+    model_predicted_category = target_pred.get("model_predicted_category", target_pred.get("risk_level", "Medium"))
+    risk_category = target_pred.get("risk_category", target_pred.get("risk_level", "Medium"))
     prediction_confidence = float(target_pred.get("prediction_confidence", target_pred.get("risk_score", 0.0)))
     overall_risk_score = float(target_pred.get("overall_risk_score", target_pred.get("risk_score", 0.0)))
     features = target_pred.get("input_features", {})
@@ -65,7 +66,8 @@ def render_visualization_page():
         "High": "#ef4444",      # Red
         "Critical": "#991b1b"   # Dark Red
     }
-    badge_color = color_map.get(risk_level, "#ef4444")
+    badge_color = color_map.get(risk_category, "#ef4444")
+    model_badge_color = color_map.get(model_predicted_category, "#f59e0b")
 
     # -------------------------------------------------------------------------
     # 1. PROJECT SUMMARY
@@ -73,7 +75,7 @@ def render_visualization_page():
     st.markdown("### PROJECT SUMMARY")
     st.markdown(f"""
         <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; margin-bottom: 28px; box-shadow: var(--card-shadow);">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
                 <div>
                     <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Project Name</div>
                     <div style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary);">{project_name}</div>
@@ -83,23 +85,27 @@ def render_visualization_page():
                     <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">{project_type}</div>
                 </div>
                 <div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Predicted Risk Category</div>
-                    <div style="font-size: 1.15rem; font-weight: 800; color: {badge_color};">{risk_level.upper()} RISK</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Model Prediction</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: {model_badge_color};">{model_predicted_category.upper()} RISK</div>
                 </div>
                 <div>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Prediction Confidence</div>
-                    <div style="font-size: 1.2rem; font-weight: 800; color: {badge_color};">{prediction_confidence}%</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Overall Risk Category</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: {badge_color};">{risk_category.upper()} RISK</div>
                 </div>
                 <div>
                     <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Overall Risk Score</div>
                     <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-primary);">{overall_risk_score}%</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Prediction Confidence</div>
+                    <div style="font-size: 1.2rem; font-weight: 800; color: {badge_color};">{prediction_confidence}%</div>
                 </div>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
     # -------------------------------------------------------------------------
-    # 2. RISK OVERVIEW (INDICATOR USES OVERALL_RISK_SCORE)
+    # 2. RISK OVERVIEW GAUGE (INDICATOR USES EXACT OVERALL_RISK_SCORE)
     # -------------------------------------------------------------------------
     st.markdown("### RISK OVERVIEW")
     st.markdown("<p style='color: var(--text-secondary); margin-bottom: 16px;'>Visual representation of overall project risk severity score.</p>", unsafe_allow_html=True)
@@ -108,16 +114,19 @@ def render_visualization_page():
         <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; margin-bottom: 32px; box-shadow: var(--card-shadow);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <span style="font-weight: 700; color: var(--text-primary);">Overall Risk Severity Indicator</span>
-                <span style="font-weight: 800; color: {badge_color}; font-size: 1.25rem;">{overall_risk_score}%</span>
+                <span style="font-weight: 800; color: {badge_color}; font-size: 1.25rem;">Overall Risk Score: {overall_risk_score}%</span>
             </div>
-            <div style="display: flex; height: 18px; border-radius: 10px; overflow: hidden; background: rgba(225, 29, 126, 0.1); margin-bottom: 16px;">
+            <div style="display: flex; height: 20px; border-radius: 10px; overflow: hidden; background: rgba(225, 29, 126, 0.1); margin-bottom: 16px;">
                 <div style="width: {overall_risk_score}%; background: {badge_color};" title="Overall Risk Score: {overall_risk_score}%"></div>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 0.88rem; font-weight: 600;">
-                <span style="color: #10b981;">Low Risk (0-35%)</span>
-                <span style="color: #f59e0b;">Medium Risk (36-65%)</span>
-                <span style="color: #ef4444;">High Risk (66-85%)</span>
-                <span style="color: #991b1b;">Critical Risk (86-100%)</span>
+                <span style="color: #10b981;">Low Risk (0–35%)</span>
+                <span style="color: #f59e0b;">Medium Risk (36–65%)</span>
+                <span style="color: #ef4444;">High Risk (66–85%)</span>
+                <span style="color: #991b1b;">Critical Risk (86–100%)</span>
+            </div>
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-color); font-size: 0.9rem; color: var(--text-secondary);">
+                <strong>Prediction Confidence:</strong> {prediction_confidence}% (Probability of model's highest predicted class '{model_predicted_category}')
             </div>
         </div>
     """, unsafe_allow_html=True)
